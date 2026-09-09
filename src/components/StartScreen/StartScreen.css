@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+
+.start-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  position: relative;
+}
+
+.title-wrapper {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  animation: musicBeat 2s infinite ease-out;
+}
+
+.game-title {
+  font-family: 'Permanent Marker', cursive, sans-serif;
+  font-size: 5rem;
+  letter-spacing: -1px;
+  line-height: 0.88;
+  text-transform: uppercase;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.title-line-top, .title-line-bottom {
+  display: block;
+}
+
+/* Cores do GDD */
+.title-red {
+  color: #FF0055;
+  text-shadow: 4px 4px 0px #000, -2px -2px 0px #FFF, 0 0 20px rgba(255, 0, 85, 0.6);
+}
+
+.title-yellow {
+  color: #FFDE00;
+  text-shadow: 4px 4px 0px #000, -2px -2px 0px #FFF, 0 0 20px rgba(255, 222, 0, 0.6);
+}
+
+.title-blue {
+  color: #00E5FF;
+  text-shadow: 4px 4px 0px #000, -2px -2px 0px #FFF, 0 0 20px rgba(0, 229, 255, 0.6);
+}
+
+.start-prompt {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #FFFFFF;
+  letter-spacing: 1px;
+  animation: fadeOnly 1.5s infinite ease-in-out;
+}
+
+/* --- ESTADO DE SAÍDA (QUANDO CLICA) --- */
+
+/* Congela todas as animações quando o evento ocorre */
+.start-container.is-exiting .title-wrapper {
+  animation-play-state: paused;
+}
+
+.start-container.is-exiting .start-prompt {
+  animation: none;
+  opacity: 1;
+}
+
+/* Cortina preta estilo transição de PowerPoint que sobe cobrindo tudo */
+.wipe-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  transform: translateY(100%); /* Escondido abaixo da tela */
+  z-index: 99;
+  pointer-events: none;
+}
+
+.start-container.is-exiting .wipe-overlay {
+  animation: wipeUp 2.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+}
+
+/* Animação da cortina subindo */
+@keyframes wipeUp {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+/* Animação do Ritmo (60 BPM) */
+@keyframes musicBeat {
+  0%, 1.5%, 24%, 26.5%, 49%, 51.5%, 61.5%, 63.5%, 74%, 77%, 100% {
+    transform: rotate(-3deg) scale(1);
+  }
+  0.5% { transform: rotate(-3deg) scale(1.12); }
+  25% { transform: rotate(-3deg) scale(1.12); }
+  50% { transform: rotate(-3deg) scale(1.08); }
+  62.5% { transform: rotate(-3deg) scale(1.08); }
+  75% { transform: rotate(-3deg) scale(1.18); }
+}
+
+/* Animação de Esmaecer */
+@keyframes fadeOnly {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
+}

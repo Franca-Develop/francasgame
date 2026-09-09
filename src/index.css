@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Rajdhani:wght@600;700&display=swap');
+
+:root {
+  /* Paleta Oficial do GDD */
+  --color-red: #FF0055;
+  --color-yellow: #FFDE00;
+  --color-blue: #00E5FF;
+  --color-bg: #000000;
+  --color-card-bg: #121212;
+  --color-text: #FFFFFF;
+  
+  /* Tipografia */
+  --font-title: 'Permanent Marker', cursive, sans-serif;
+  --font-ui: 'Rajdhani', Arial, sans-serif;
+}
+
+/* Reset Global */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Evita rolagens da tela durante o jogo */
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  
+  /* Configurações essenciais para Jogos de Ritmo */
+  user-select: none; /* Evita selecionar textos ao apertar teclas rápido */
+  -webkit-user-select: none;
+  touch-action: manipulation; /* Remove o atraso do duplo toque no Mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Esconde barras de rolagem padrão */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Utility Class para Telas (StartScreen, MainMenu, etc.) */
+.screen-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Configuração do Canvas da Gameplay */
+canvas {
+  display: block;
+}

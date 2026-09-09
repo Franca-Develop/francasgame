@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+
+.main-menu-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  /* Fundo com a arte centralizada */
+  background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.4)),
+              url('../../assets/image/menu-background.jpg') center/110% no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4vh 6vw;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.menu-spacer {
+  height: 2rem;
+}
+
+.menu-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  z-index: 2;
+  width: 100%;
+  max-width: 600px;
+  align-items: center;
+}
+
+.menu-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Permanent Marker', cursive, sans-serif;
+  font-size: 3.2rem;
+  color: #999999;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  transition: transform 0.15s ease, color 0.15s ease;
+  transform: rotate(-3deg) scale(0.95);
+  outline: none;
+}
+
+.item-arrow-left, .item-arrow-right {
+  font-size: 2rem;
+  opacity: 0;
+  color: var(--item-color);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.menu-item.selected {
+  color: #FFFFFF;
+  transform: rotate(-2deg) scale(1.1);
+  text-shadow: 
+    4px 4px 0px #000000,
+    -2px -2px 0px #000000,
+    0 0 25px var(--item-color);
+}
+
+.menu-item.selected .item-arrow-left,
+.menu-item.selected .item-arrow-right {
+  opacity: 1;
+}
+
+.menu-item.selected .item-arrow-left {
+  animation: moveArrowLeft 0.6s infinite alternate ease-in-out;
+}
+
+.menu-item.selected .item-arrow-right {
+  animation: moveArrowRight 0.6s infinite alternate ease-in-out;
+}
+
+.menu-item.confirming {
+  animation: flashConfirm 0.12s infinite alternate;
+}
+
+.menu-footer {
+  z-index: 2;
+  font-family: Arial, sans-serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 1px;
+  margin-top: 150px;
+}
+
+@keyframes moveArrowLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(-8px); }
+}
+
+@keyframes moveArrowRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(8px); }
+}
+
+@keyframes flashConfirm {
+  0% {
+    color: #FFFFFF;
+    text-shadow: 0 0 30px var(--item-color);
+  }
+  100% {
+    color: var(--item-color);
+    text-shadow: 0 0 40px #FFFFFF, 5px 5px 0px #000;
+  }
+}
