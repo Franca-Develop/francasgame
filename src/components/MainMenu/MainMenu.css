@@ -6,7 +6,7 @@
   height: 100vh;
   /* Fundo com a arte centralizada */
   background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.4)),
-              url('../../assets/image/menu-background.jpg') center/110% no-repeat;
+              url('../../assets/images/backgrounds/menu-background.jpg') center/110% no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: center;

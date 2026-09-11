@@ -6,7 +6,7 @@
   height: 100vh;
   /* Overlay escuro reduzindo o brilho da imagem ao fundo */
   background: linear-gradient(rgba(12, 0, 25, 0.80), rgba(12, 0, 25, 0.88)),
-              url('../../assets/image/menu-background.jpg') center/cover no-repeat;
+              url('../../assets/images/backgrounds/menu-background.jpg') center/cover no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;

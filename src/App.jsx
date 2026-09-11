@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
-import OptionsMenu from "./components/OptionsMenu/OptionsMenu";
+import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
+import FreeplayMenu from "./components/FreePlayMenu/FreePlayMenu";
 
 import menuThemeAudio from "./assets/audio/music/menu-theme.mp3";
 
@@ -26,7 +27,7 @@ export default function App() {
 
   // Adicione junto com os outros estados Globais:
   const [keybinds, setKeybinds] = useState(() => {
-    return localStorage.getItem("rhythm_keybinds") || "SETAS";
+    return localStorage.getItem("rhythm_keybinds") || "ARROWS";
   });
 
   // Salva alterações no localStorage
@@ -135,7 +136,7 @@ export default function App() {
       )}
 
       {currentScreen === "options" && (
-        <OptionsMenu
+        <SettingsMenu
           bgmVolume={bgmVolume}
           setBgmVolume={setBgmVolume}
           sfxVolume={sfxVolume}
@@ -158,12 +159,18 @@ export default function App() {
       )}
 
       {currentScreen === "freeplay" && (
-        <div className="placeholder-screen">
-          <h1>FREEPLAY</h1>
-          <button onClick={() => setCurrentScreen("menu")}>
-            VOLTAR AO MENU
-          </button>
-        </div>
+        <FreeplayMenu
+          sfxVolume={sfxVolume}
+          onSelectSong={({ song, difficulty }) => {
+            console.log(
+              "Iniciando música:",
+              song.name,
+              "Dificuldade:",
+              difficulty,
+            );
+          }}
+          onBack={() => setCurrentScreen("menu")}
+        />
       )}
     </div>
   );
