@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./SettingsMenu.css";
 
-import scrollSfxAudio from "../../assets/audio/sfx/scroll-sfx.mp3";
-import confirmSfxAudio from "../../assets/audio/sfx/select-sfx.mp3";
-import cancelSfxAudio from "../../assets/audio/sfx/cancel-sfx.mp3";
+// Importa o utilitário de SFX com latência zero
+import { playSfx } from "../../utils/sfxManager";
 
 const KEYBIND_PRESETS = ["ARROWS", "WASD", "DFJK"];
 
@@ -20,7 +19,6 @@ export default function OptionsMenu({
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const lastInputRef = useRef("keyboard");
-  const selectedRef = useRef(null);
   const selectedItemRef = useRef(null);
 
   const OPTIONS = [
@@ -39,39 +37,20 @@ export default function OptionsMenu({
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // Efeito para rolar suavemente a tela acompanhando a seleção
   useEffect(() => {
-    if (selectedRef.current) {
-      selectedRef.current.scrollIntoView({
+    if (selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
       });
     }
   }, [selectedIndex]);
 
-  // Efeito para rolar suavemente a tela acompanhando a seleção
-  useEffect(() => {
-    if (selectedItemRef.current) {
-      selectedItemRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
-    }
-  }, [selectedIndex]);
-
-  const playSfx = useCallback(
-    (audioPath, volumeMult = 1) => {
-      const sfx = new Audio(audioPath);
-      sfx.volume = Math.min(1, Math.max(0, sfxVolume * volumeMult));
-      sfx.currentTime = 0.03;
-      sfx.play().catch(() => {});
-    },
-    [sfxVolume],
-  );
-
   const changeValue = useCallback(
     (direction) => {
       const option = OPTIONS[selectedIndex].id;
-      playSfx(scrollSfxAudio);
+      playSfx("scroll", sfxVolume);
 
       if (option === "bgm") {
         setBgmVolume((prev) =>
@@ -105,36 +84,36 @@ export default function OptionsMenu({
     [
       selectedIndex,
       OPTIONS,
+      sfxVolume,
       setBgmVolume,
       setSfxVolume,
       setAudioOffset,
       setKeybinds,
-      playSfx,
     ],
   );
 
   const handleNext = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx(scrollSfxAudio);
+    playSfx("scroll", sfxVolume);
     setSelectedIndex((prev) => (prev + 1) % OPTIONS.length);
-  }, [playSfx, OPTIONS.length]);
+  }, [OPTIONS.length, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx(scrollSfxAudio);
+    playSfx("scroll", sfxVolume);
     setSelectedIndex((prev) => (prev - 1 + OPTIONS.length) % OPTIONS.length);
-  }, [playSfx, OPTIONS.length]);
+  }, [OPTIONS.length, sfxVolume]);
 
   const handleConfirm = useCallback(() => {
     const currentId = OPTIONS[selectedIndex].id;
     if (currentId === "back") {
-      playSfx(cancelSfxAudio);
+      playSfx("cancel", sfxVolume);
       onBack();
     } else {
-      playSfx(confirmSfxAudio);
+      playSfx("select", sfxVolume);
       changeValue(1);
     }
-  }, [selectedIndex, OPTIONS, onBack, changeValue, playSfx]);
+  }, [selectedIndex, OPTIONS, onBack, changeValue, sfxVolume]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -165,7 +144,7 @@ export default function OptionsMenu({
           break;
         case "Escape":
         case "Backspace":
-          playSfx(cancelSfxAudio);
+          playSfx("cancel", sfxVolume);
           onBack();
           break;
         default:
@@ -175,11 +154,11 @@ export default function OptionsMenu({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleNext, handlePrev, changeValue, handleConfirm, onBack, playSfx]);
+  }, [handleNext, handlePrev, changeValue, handleConfirm, onBack, sfxVolume]);
 
   const handleHover = (index) => {
     if (lastInputRef.current === "mouse" && selectedIndex !== index) {
-      playSfx(scrollSfxAudio);
+      playSfx("scroll", sfxVolume);
       setSelectedIndex(index);
     }
   };

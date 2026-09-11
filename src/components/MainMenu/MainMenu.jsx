@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./MainMenu.css";
 
-import scrollSfxAudio from "../../assets/audio/sfx/scroll-sfx.mp3";
-import confirmSfxAudio from "../../assets/audio/sfx/select-sfx.mp3";
-import yeahSfxAudio from "../../assets/audio/sfx/yeah-sfx.mp3";
-import cancelSfxAudio from "../../assets/audio/sfx/cancel-sfx.mp3";
+// Importa o gerenciador global de SFX via Web Audio API
+import { playSfx } from "../../utils/sfxManager";
 
 const MENU_OPTIONS = [
   { id: "story", label: "STORY MODE", color: "#FF0055" },
@@ -17,8 +15,6 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
   const [isConfirming, setIsConfirming] = useState(false);
 
   const lastInputRef = useRef("keyboard");
-  const audioCtxRef = useRef(null);
-  const scrollBufferRef = useRef(null);
 
   useEffect(() => {
     const handleMouseMove = () => {
@@ -28,84 +24,29 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Decodifica o som de scroll na memória RAM
-  useEffect(() => {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-    audioCtxRef.current = ctx;
-
-    fetch(scrollSfxAudio)
-      .then((res) => res.arrayBuffer())
-      .then((arrayBuffer) => ctx.decodeAudioData(arrayBuffer))
-      .then((decodedBuffer) => {
-        scrollBufferRef.current = decodedBuffer;
-      })
-      .catch(() => {});
-
-    return () => {
-      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-        audioCtxRef.current.close();
-      }
-    };
-  }, []);
-
-  const playScrollSfx = useCallback(() => {
-    if (!audioCtxRef.current || !scrollBufferRef.current) return;
-
-    const ctx = audioCtxRef.current;
-    if (ctx.state === "suspended") ctx.resume();
-
-    const source = ctx.createBufferSource();
-    source.buffer = scrollBufferRef.current;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = Math.min(1, Math.max(0, sfxVolume * 0.8));
-
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    source.start(0, 0.05); // Pula 50ms do silêncio inicial
-  }, [sfxVolume]);
-
-  const playSfx = useCallback(
-    (audioPath, volumeMult = 1) => {
-      const sfx = new Audio(audioPath);
-      sfx.volume = Math.min(1, Math.max(0, sfxVolume * volumeMult));
-      sfx.play().catch(() => {});
-    },
-    [sfxVolume],
-  );
-
   const handleNext = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playScrollSfx();
+    playSfx("scroll", sfxVolume * 0.8);
     setSelectedIndex((prev) => (prev + 1) % MENU_OPTIONS.length);
-  }, [isConfirming, playScrollSfx]);
+  }, [isConfirming, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playScrollSfx();
+    playSfx("scroll", sfxVolume * 0.8);
     setSelectedIndex(
       (prev) => (prev - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length,
     );
-  }, [isConfirming, playScrollSfx]);
+  }, [isConfirming, sfxVolume]);
 
   const handleConfirm = useCallback(() => {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    const confirmSfx = new Audio(confirmSfxAudio);
-    confirmSfx.volume = Math.min(1, sfxVolume * 0.8);
-    confirmSfx.playbackRate = 1.35;
-    confirmSfx.currentTime = 0.08;
-    confirmSfx.play().catch(() => {});
-
-    const yeahSfx = new Audio(yeahSfxAudio);
-    yeahSfx.volume = Math.min(1, sfxVolume * 0.9);
-    yeahSfx.currentTime = 0.05;
-    yeahSfx.play().catch(() => {});
+    // Toca os efeitos de confirmação instantaneamente
+    playSfx("select", sfxVolume * 0.8);
+    playSfx("yeah", sfxVolume * 0.9);
 
     const selectedOption = MENU_OPTIONS[selectedIndex].id;
 
@@ -116,9 +57,9 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
 
   const handleCancel = useCallback(() => {
     if (isConfirming) return;
-    playSfx(cancelSfxAudio);
+    playSfx("cancel", sfxVolume);
     if (onBack) onBack();
-  }, [isConfirming, playSfx, onBack]);
+  }, [isConfirming, sfxVolume, onBack]);
 
   const handleItemHover = (index) => {
     if (
@@ -126,7 +67,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
       !isConfirming &&
       selectedIndex !== index
     ) {
-      playScrollSfx();
+      playSfx("scroll", sfxVolume * 0.8);
       setSelectedIndex(index);
     }
   };

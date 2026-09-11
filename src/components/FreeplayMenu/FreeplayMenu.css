@@ -4,7 +4,6 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  /* Fundo azul-roxo estético do Freeplay FNF sobre a imagem do menu */
   background: linear-gradient(rgba(10, 20, 50, 0.82), rgba(5, 5, 25, 0.90)),
               url('../../assets/images/backgrounds/menu-background.jpg') center/115% no-repeat;
   display: flex;
@@ -64,16 +63,28 @@
   gap: 12px;
 }
 
+/* BOTÕES DE DIFICULDADE (Interativos via mouse) */
 .diff-selector button {
   background: #00E5FF;
   border: 2px solid #000;
   border-radius: 6px;
-  cursor: pointer;
   font-size: 1.2rem;
   padding: 2px 8px;
   box-shadow: 2px 2px 0px #000;
   cursor: pointer;
   user-select: none;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.diff-selector button:hover {
+  background: #FF0055;
+  color: #FFF;
+  transform: scale(1.2) rotate(-3deg);
+}
+
+.diff-selector button:active {
+  transform: scale(0.95);
+  box-shadow: 1px 1px 0px #000;
 }
 
 .diff-text {
@@ -82,9 +93,9 @@
   -webkit-text-stroke: 2px #000;
 }
 
-.diff-0 { color: #55FF55; text-shadow: 2px 2px 0px #000; } /* Fácil */
-.diff-1 { color: #FFDE00; text-shadow: 2px 2px 0px #000; } /* Normal */
-.diff-2 { color: #FF0055; text-shadow: 2px 2px 0px #000; } /* Difícil */
+.diff-0 { color: #55FF55; text-shadow: 2px 2px 0px #000; }
+.diff-1 { color: #FFDE00; text-shadow: 2px 2px 0px #000; }
+.diff-2 { color: #FF0055; text-shadow: 2px 2px 0px #000; }
 
 /* LISTA DE MÚSICAS ESTILO FNF */
 .freeplay-song-list {
@@ -114,6 +125,7 @@
   pointer-events: none;
 }
 
+/* Visual ativado unicamente pelo estado do React via classe .selected */
 .freeplay-song-card.selected {
   border-left-color: #00E5FF;
   background: rgba(255, 255, 255, 0.15);
@@ -126,6 +138,7 @@
   text-transform: uppercase;
   -webkit-text-stroke: 2.5px #000;
   text-shadow: 3px 3px 0px #000;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
 }
 
 .freeplay-song-card.selected .song-title {
@@ -156,7 +169,6 @@
   transition: transform 0.2s ease;
 }
 
-/* Animação do ícone ao selecionar a música */
 .freeplay-song-card.selected .song-icon {
   transform: scale(1.25) rotate(5deg);
 }
@@ -171,4 +183,3 @@
   -webkit-text-stroke: 1.5px #000;
   text-shadow: 2px 2px 0px #000;
 }
-

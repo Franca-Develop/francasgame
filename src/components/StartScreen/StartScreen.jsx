@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './StartScreen.css';
 
+// Importa o disparador de SFX instantâneo
+import { playSfx } from '../../utils/sfxManager';
+
 import startThemeAudio from '../../assets/audio/music/start-theme.mp3';
-import startSfxAudio from '../../assets/audio/sfx/select-sfx.mp3';
 
 const BGM_VOLUME = 0.3;
 const EXIT_DELAY_MS = 2500;
@@ -56,9 +58,8 @@ export default function StartScreen({ onStart }) {
     if (isExiting) return;
     setIsExiting(true);
 
-    const sfx = new Audio(startSfxAudio);
-    sfx.volume = 0.4;
-    sfx.play().catch(() => {});
+    // Toca o som de confirmação pré-carregado no App.jsx sem latência
+    playSfx('select', 0.4);
 
     if (audioCtxRef.current && gainNodeRef.current) {
       const ctx = audioCtxRef.current;
@@ -97,7 +98,7 @@ export default function StartScreen({ onStart }) {
       </div>
 
       <p className="start-prompt">
-        Aperte qualquer tecla ou toque na tela para iniciar
+        Press any key or touch the screen to start
       </p>
 
       <div className="wipe-overlay" />

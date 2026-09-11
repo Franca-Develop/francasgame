@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './FreeplayMenu.css';
 
-import scrollSfxAudio from '../../assets/audio/sfx/scroll-sfx.mp3';
-import confirmSfxAudio from '../../assets/audio/sfx/select-sfx.mp3';
-import cancelSfxAudio from '../../assets/audio/sfx/cancel-sfx.mp3';
+// Importa o gerenciador global de SFX via Web Audio API
+import { playSfx } from '../../utils/sfxManager';
 
 import kingDiceIcon from '../../assets/images/icons/king-dice-icon.png';
 import v1Icon from '../../assets/images/icons/v1-icon.png';
@@ -44,34 +43,31 @@ const SONG_LIST = [
   }
 ];
 
-export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+export default function FreeplayMenu({ 
+  sfxVolume = 1, 
+  isSecretUnlocked = false, 
+  onSelectSong, 
+  onBack 
+}) {
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [diffIndex, setDiffIndex] = useState(1);
   const selectedItemRef = useRef(null);
 
-  // Armazena as coordenadas (X, Y) do mouse para detectar movimento real
-  const lastMousePos = useRef({ x: 0, y: 0 });
+  const lastInputRef = useRef('keyboard');
+  const mousePosRef = useRef({ x: 0, y: 0 });
 
-  const [isSecretUnlocked, setIsSecretUnlocked] = useState(false);
-
-  useEffect(() => {
-    const hardCompleted = localStorage.getItem('rhythm_hard_completed') === 'true';
-    setIsSecretUnlocked(hardCompleted);
-  }, []);
-
-  const visibleSongs = ALL_SONGS.filter(
+  const visibleSongs = SONG_LIST.filter(
     (song) => !song.isSecret || isSecretUnlocked
   );
 
   useEffect(() => {
     if (selectedIndex >= visibleSongs.length) {
-      setSelectedIndex(0);
+      setSelectedIndex(-1);
     }
   }, [visibleSongs.length, selectedIndex]);
 
-  // Centraliza o item selecionado na tela
   useEffect(() => {
-    if (selectedItemRef.current) {
+    if (selectedIndex !== -1 && selectedItemRef.current) {
       selectedItemRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'nearest'
@@ -79,43 +75,47 @@ export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
     }
   }, [selectedIndex]);
 
-  const playSfx = useCallback((audioPath) => {
-    const sfx = new Audio(audioPath);
-    sfx.volume = sfxVolume;
-    sfx.currentTime = 0;
-    sfx.play().catch(() => {});
-  }, [sfxVolume]);
-
   const changeSong = useCallback((direction) => {
-    playSfx(scrollSfxAudio);
-    setSelectedIndex((prev) => (prev + direction + visibleSongs.length) % visibleSongs.length);
-  }, [playSfx, visibleSongs.length]);
+    lastInputRef.current = 'keyboard';
+    playSfx('scroll', sfxVolume);
+    setSelectedIndex((prev) => {
+      if (prev === -1) {
+        return direction > 0 ? 0 : visibleSongs.length - 1;
+      }
+      return (prev + direction + visibleSongs.length) % visibleSongs.length;
+    });
+  }, [sfxVolume, visibleSongs.length]);
 
   const changeDifficulty = useCallback((direction) => {
-    playSfx(scrollSfxAudio);
+    lastInputRef.current = 'keyboard';
+    playSfx('scroll', sfxVolume);
     setDiffIndex((prev) => (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length);
-  }, [playSfx]);
+  }, [sfxVolume]);
 
   const handleConfirm = useCallback((songToPlay) => {
-    const selectedSong = songToPlay || visibleSongs[selectedIndex];
+    const selectedSong = songToPlay || (selectedIndex !== -1 ? visibleSongs[selectedIndex] : null);
 
     if (!selectedSong) return;
 
-    playSfx(confirmSfxAudio);
+    playSfx('select', sfxVolume);
     if (onSelectSong) {
       onSelectSong({
         song: selectedSong,
         difficulty: DIFFICULTIES[diffIndex]
       });
     }
-  }, [selectedIndex, visibleSongs, diffIndex, playSfx, onSelectSong]);
+  }, [selectedIndex, visibleSongs, diffIndex, sfxVolume, onSelectSong]);
 
-  // Só altera a seleção se a mão do jogador REALMENTE mover o mouse
-  const handleMouseMoveOnItem = (e, index) => {
-    if (e.clientX !== lastMousePos.current.x || e.clientY !== lastMousePos.current.y) {
-      lastMousePos.current = { x: e.clientX, y: e.clientY };
+  // Só troca para o modo 'mouse' se o ponteiro REALMENTE mudar de coordenadas X/Y
+  const handleMouseMoveItem = (e, index) => {
+    const hasMoved = e.clientX !== mousePosRef.current.x || e.clientY !== mousePosRef.current.y;
+
+    if (hasMoved) {
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+      lastInputRef.current = 'mouse';
+
       if (selectedIndex !== index) {
-        playSfx(scrollSfxAudio);
+        playSfx('scroll', sfxVolume);
         setSelectedIndex(index);
       }
     }
@@ -150,7 +150,7 @@ export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
           break;
         case 'Escape':
         case 'Backspace':
-          playSfx(cancelSfxAudio);
+          playSfx('cancel', sfxVolume);
           if (onBack) onBack();
           break;
         default:
@@ -160,11 +160,10 @@ export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [changeSong, changeDifficulty, handleConfirm, onBack, playSfx]);
+  }, [changeSong, changeDifficulty, handleConfirm, onBack, sfxVolume]);
 
   return (
     <div className="freeplay-container">
-      {/* Selector de Dificuldade */}
       <div className="freeplay-score-box">
         <div className="score-label">PONTUAÇÃO MÁXIMA</div>
         <div className="score-value">000000</div>
@@ -177,7 +176,6 @@ export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
         </div>
       </div>
 
-      {/* Lista de Músicas */}
       <div className="freeplay-song-list">
         {visibleSongs.map((song, index) => {
           const isSelected = index === selectedIndex;
@@ -187,8 +185,9 @@ export default function FreeplayMenu({ sfxVolume = 1, onSelectSong, onBack }) {
               key={song.id}
               ref={isSelected ? selectedItemRef : null}
               className={`freeplay-song-card ${isSelected ? 'selected' : ''}`}
-              onMouseMove={(e) => handleMouseMoveOnItem(e, index)}
+              onMouseMove={(e) => handleMouseMoveItem(e, index)}
               onClick={() => {
+                lastInputRef.current = 'mouse';
                 setSelectedIndex(index);
                 handleConfirm(song);
               }}

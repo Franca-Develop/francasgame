@@ -2,12 +2,21 @@ import React, { useState, useEffect, useRef } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
 import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
-import FreeplayMenu from "./components/FreePlayMenu/FreePlayMenu";
+import FreeplayMenu from "./components/FreeplayMenu/FreeplayMenu";
 
+// Músicas e SFX
 import menuThemeAudio from "./assets/audio/music/menu-theme.mp3";
+import scrollSfxAudio from "./assets/audio/sfx/scroll-sfx.mp3";
+import selectSfxAudio from "./assets/audio/sfx/select-sfx.mp3";
+import cancelSfxAudio from "./assets/audio/sfx/cancel-sfx.mp3";
+
+// Utilitário Web Audio API para carregar SFX na RAM com latência zero
+import { loadSfx } from "./utils/sfxManager";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState("start");
+
+  const [isHardWeekCompleted, setIsHardWeekCompleted] = useState(false);
 
   // Estados Globais de Áudio e Configurações
   const [bgmVolume, setBgmVolume] = useState(() => {
@@ -25,7 +34,6 @@ export default function App() {
     return saved !== null ? parseInt(saved, 10) : 0;
   });
 
-  // Adicione junto com os outros estados Globais:
   const [keybinds, setKeybinds] = useState(() => {
     return localStorage.getItem("rhythm_keybinds") || "ARROWS";
   });
@@ -47,12 +55,19 @@ export default function App() {
     localStorage.setItem("rhythm_keybinds", keybinds);
   }, [keybinds]);
 
+  // Pré-carrega os Efeitos Sonoros (SFX) na RAM ao abrir o jogo
+  useEffect(() => {
+    loadSfx("scroll", scrollSfxAudio);
+    loadSfx("select", selectSfxAudio);
+    loadSfx("cancel", cancelSfxAudio);
+  }, []);
+
   // Web Audio API Ref Global para a Música do Menu
   const audioCtxRef = useRef(null);
   const audioRef = useRef(null);
   const gainNodeRef = useRef(null);
 
-  // Instancia a Web Audio API Global (Executado 1 vez)
+  // Instancia a Web Audio API Global para BGM (Executado 1 vez)
   useEffect(() => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioContext();
@@ -161,13 +176,10 @@ export default function App() {
       {currentScreen === "freeplay" && (
         <FreeplayMenu
           sfxVolume={sfxVolume}
+          isSecretUnlocked={isHardWeekCompleted}
           onSelectSong={({ song, difficulty }) => {
-            console.log(
-              "Iniciando música:",
-              song.name,
-              "Dificuldade:",
-              difficulty,
-            );
+            console.log(`Iniciando ${song.name} no modo ${difficulty}`);
+            // Quando implementar o jogo, troque para: setCurrentScreen('gameplay');
           }}
           onBack={() => setCurrentScreen("menu")}
         />
