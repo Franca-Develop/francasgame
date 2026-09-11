@@ -1,0 +1,149 @@
+.story-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  color: #fff;
+  font-family: "Impact", "Arial Black", sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+
+.story-header {
+  height: 40px;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  z-index: 10;
+}
+
+.week-score {
+  color: #fff;
+}
+
+/* Área vermelha central reservada para personagens */
+.story-banner-container {
+  flex: 1;
+  background-color: #d41a3c;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.character-canvas-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Painel inferior escuro */
+.story-controls-panel {
+  height: 200px;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 50px;
+  z-index: 10;
+}
+
+/* Músicas */
+.tracks-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tracks-header {
+  color: #ff0055;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+}
+
+.tracks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tracks-list li {
+  color: #ff3377;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+/* Título da Semana */
+.week-title-column {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.week-title {
+  font-size: 4rem;
+  margin: 0;
+  letter-spacing: 4px;
+  color: #fff;
+  transition: transform 0.1s ease;
+}
+
+.week-title.confirming {
+  color: #00e5ff;
+  animation: flash 0.15s infinite alternate;
+}
+
+/* Seleção de Dificuldade */
+.difficulty-column {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.diff-arrow {
+  background: none;
+  border: none;
+  color: #00e5ff;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.diff-arrow:hover {
+  transform: scale(1.2);
+}
+
+.diff-label {
+  font-size: 2.4rem;
+  width: 180px; /* Substituído min-width por width fixo */
+  display: inline-block;
+  text-align: center;
+}
+
+.diff-0 {
+  color: #00ff66;
+} /* EASY */
+.diff-1 {
+  color: #ffde00;
+} /* NORMAL */
+.diff-2 {
+  color: #ff0055;
+} /* HARD */
+
+@keyframes flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}

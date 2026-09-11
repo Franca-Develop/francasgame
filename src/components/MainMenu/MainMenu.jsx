@@ -7,7 +7,7 @@ import { playSfx } from "../../utils/sfxManager";
 const MENU_OPTIONS = [
   { id: "story", label: "STORY MODE", color: "#FF0055" },
   { id: "freeplay", label: "FREEPLAY", color: "#FFDE00" },
-  { id: "options", label: "SETTINGS", color: "#00E5FF" },
+  { id: "settings", label: "SETTINGS", color: "#00E5FF" },
 ];
 
 export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {

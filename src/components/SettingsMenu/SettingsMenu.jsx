@@ -219,7 +219,7 @@ export default function OptionsMenu({
 
   return (
     <div className="options-container">
-      <h1 className="options-title">OPTIONS</h1>
+      <h1 className="options-title">SETTINGS</h1>
 
       <div className="options-left-list">
         {OPTIONS.map((item, index) => {

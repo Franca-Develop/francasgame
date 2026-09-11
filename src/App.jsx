@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
-import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
+import StoryModeMenu from "./components/StoryModeMenu/StoryModeMenu"
 import FreeplayMenu from "./components/FreeplayMenu/FreeplayMenu";
+import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
 
 // Músicas e SFX
 import menuThemeAudio from "./assets/audio/music/menu-theme.mp3";
@@ -105,7 +106,7 @@ export default function App() {
     const audio = audioRef.current;
     const targetVol = bgmVolume * 0.25;
 
-    if (currentScreen === "menu" || currentScreen === "options") {
+    if (currentScreen === "menu" || currentScreen === "settings") {
       // Destrava o contexto caso o navegador tenha suspenso o áudio
       if (ctx.state === "suspended") {
         ctx.resume();
@@ -127,7 +128,7 @@ export default function App() {
       gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
 
       const timeoutId = setTimeout(() => {
-        if (currentScreen !== "menu" && currentScreen !== "options") {
+        if (currentScreen !== "menu" && currentScreen !== "settings") {
           audio.pause();
         }
       }, 400);
@@ -150,7 +151,7 @@ export default function App() {
         />
       )}
 
-      {currentScreen === "options" && (
+      {currentScreen === "settings" && (
         <SettingsMenu
           bgmVolume={bgmVolume}
           setBgmVolume={setBgmVolume}
@@ -165,13 +166,15 @@ export default function App() {
       )}
 
       {currentScreen === "story" && (
-        <div className="placeholder-screen">
-          <h1>MODO HISTÓRIA</h1>
-          <button onClick={() => setCurrentScreen("menu")}>
-            VOLTAR AO MENU
-          </button>
-        </div>
-      )}
+  <StoryModeMenu
+    sfxVolume={sfxVolume}
+    onSelectWeek={({ week, difficulty, tracks }) => {
+      console.log(`Iniciando ${week} na dificuldade ${difficulty}`, tracks);
+      // Quando criar a engine de jogo, troque por: setCurrentScreen("gameplay");
+    }}
+    onBack={() => setCurrentScreen("menu")}
+  />
+)}
 
       {currentScreen === "freeplay" && (
         <FreeplayMenu
