@@ -1,22 +1,57 @@
 import React, { useState, useEffect, useRef } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
-import StoryModeMenu from "./components/StoryModeMenu/StoryModeMenu"
+import StoryModeMenu from "./components/StoryModeMenu/StoryModeMenu";
 import FreeplayMenu from "./components/FreeplayMenu/FreeplayMenu";
 import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
+import GameCanvas from "./components/GameCanvas/GameCanvas";
+
+// Importa o chart de testes genérico
+import testChart from "./assets/charts/test-song.json";
 
 // Músicas e SFX
-import menuThemeAudio from "./assets/audio/music/menu-theme.mp3";
+import menuThemeAudio from "./assets/audio/musics/menu-theme.mp3";
 import scrollSfxAudio from "./assets/audio/sfx/scroll-sfx.mp3";
 import selectSfxAudio from "./assets/audio/sfx/select-sfx.mp3";
 import cancelSfxAudio from "./assets/audio/sfx/cancel-sfx.mp3";
+import yeahSfxAudio from "./assets/audio/sfx/yeah-sfx.mp3";
 
 // Utilitário Web Audio API para carregar SFX na RAM com latência zero
-import { loadSfx } from "./utils/sfxManager";
+import { loadSfx } from "./utils/useAudio";
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState("start");
+  const [selectedSongData, setSelectedSongData] = useState(null);
 
+  // Dados padrão para a fase de testes
+  const TEST_SONG_DATA = {
+    id: "test-song",
+    title: "Test Track",
+    bpm: 120,
+    scrollSpeed: 1.5,
+    audioUrl: menuThemeAudio,
+    chartData: testChart,
+  };
+
+  // Função genérica para iniciar o jogo a partir de qualquer menu
+  const handleStartGameplay = (song) => {
+    if (!song) {
+      setSelectedSongData(TEST_SONG_DATA);
+      setCurrentScreen("gameplay");
+      return;
+    }
+
+    const fullSongData = {
+      ...song,
+      title: song.name,
+      audioUrl: `/src/assets/audio/musics/${song.id}.mp3`,
+      chartData: testChart,
+    };
+
+    setSelectedSongData(fullSongData);
+    setCurrentScreen("gameplay");
+  };
+
+  const [currentScreen, setCurrentScreen] = useState("start");
   const [isHardWeekCompleted, setIsHardWeekCompleted] = useState(false);
 
   // Estados Globais de Áudio e Configurações
@@ -39,6 +74,11 @@ export default function App() {
     return localStorage.getItem("rhythm_keybinds") || "ARROWS";
   });
 
+  const [isDownscroll, setIsDownscroll] = useState(() => {
+    const saved = localStorage.getItem("isDownscroll");
+    return saved !== null ? JSON.parse(saved) : false;
+  });
+
   // Salva alterações no localStorage
   useEffect(() => {
     localStorage.setItem("rhythm_bgm_vol", bgmVolume.toString());
@@ -56,11 +96,16 @@ export default function App() {
     localStorage.setItem("rhythm_keybinds", keybinds);
   }, [keybinds]);
 
-  // Pré-carrega os Efeitos Sonoros (SFX) na RAM ao abrir o jogo
+  useEffect(() => {
+    localStorage.setItem("isDownscroll", JSON.stringify(isDownscroll));
+  }, [isDownscroll]);
+
+  // Pré-carrega os SFX na RAM
   useEffect(() => {
     loadSfx("scroll", scrollSfxAudio);
     loadSfx("select", selectSfxAudio);
     loadSfx("cancel", cancelSfxAudio);
+    loadSfx("yeah", yeahSfxAudio);
   }, []);
 
   // Web Audio API Ref Global para a Música do Menu
@@ -68,7 +113,6 @@ export default function App() {
   const audioRef = useRef(null);
   const gainNodeRef = useRef(null);
 
-  // Instancia a Web Audio API Global para BGM (Executado 1 vez)
   useEffect(() => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioContext();
@@ -85,7 +129,6 @@ export default function App() {
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    // Inicializa o volume zerado
     gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
 
     return () => {
@@ -96,7 +139,7 @@ export default function App() {
     };
   }, []);
 
-  // Controle Inteligente do BGM por Tela
+  // Controle do BGM por Tela
   useEffect(() => {
     if (!audioCtxRef.current || !gainNodeRef.current || !audioRef.current)
       return;
@@ -107,9 +150,8 @@ export default function App() {
     const targetVol = bgmVolume * 0.25;
 
     if (currentScreen === "menu" || currentScreen === "settings") {
-      // Destrava o contexto caso o navegador tenha suspenso o áudio
       if (ctx.state === "suspended") {
-        ctx.resume();
+        ctx.resume().catch(() => {});
       }
       if (audio.paused) {
         audio.play().catch(() => {});
@@ -123,7 +165,6 @@ export default function App() {
         ctx.currentTime + 0.4,
       );
     } else {
-      // Tela 'start', 'story' ou 'freeplay' -> silencia a música do menu
       gainNode.gain.cancelScheduledValues(ctx.currentTime);
       gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
 
@@ -161,30 +202,39 @@ export default function App() {
           setAudioOffset={setAudioOffset}
           keybinds={keybinds}
           setKeybinds={setKeybinds}
+          isDownscroll={isDownscroll}
+          setIsDownscroll={setIsDownscroll}
           onBack={() => setCurrentScreen("menu")}
         />
       )}
 
       {currentScreen === "story" && (
-  <StoryModeMenu
-    sfxVolume={sfxVolume}
-    onSelectWeek={({ week, difficulty, tracks }) => {
-      console.log(`Iniciando ${week} na dificuldade ${difficulty}`, tracks);
-      // Quando criar a engine de jogo, troque por: setCurrentScreen("gameplay");
-    }}
-    onBack={() => setCurrentScreen("menu")}
-  />
-)}
+        <StoryModeMenu
+          sfxVolume={sfxVolume}
+          onSelectWeek={(weekData) => handleStartGameplay(weekData)}
+          onBack={() => setCurrentScreen("menu")}
+        />
+      )}
 
       {currentScreen === "freeplay" && (
         <FreeplayMenu
           sfxVolume={sfxVolume}
           isSecretUnlocked={isHardWeekCompleted}
-          onSelectSong={({ song, difficulty }) => {
-            console.log(`Iniciando ${song.name} no modo ${difficulty}`);
-            // Quando implementar o jogo, troque para: setCurrentScreen('gameplay');
-          }}
+          onToggleSecret={() => setIsHardWeekCompleted((prev) => !prev)}
+          onStartSong={(song) => handleStartGameplay(song)}
           onBack={() => setCurrentScreen("menu")}
+        />
+      )}
+
+      {currentScreen === "gameplay" && (
+        <GameCanvas
+          songData={selectedSongData || TEST_SONG_DATA}
+          isDownscroll={isDownscroll}
+          sfxVolume={sfxVolume}
+          bgmVolume={bgmVolume}
+          keybinds={keybinds}
+          audioOffset={audioOffset}
+          onExit={() => setCurrentScreen("menu")}
         />
       )}
     </div>

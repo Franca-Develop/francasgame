@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import './StartScreen.css';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import "./StartScreen.css";
 
 // Importa o disparador de SFX instantâneo
-import { playSfx } from '../../utils/sfxManager';
+import { playSfx } from "../../utils/useAudio";
 
-import startThemeAudio from '../../assets/audio/music/start-theme.mp3';
+import startThemeAudio from "../../assets/audio/musics/start-theme.mp3";
 
 const BGM_VOLUME = 0.3;
 const EXIT_DELAY_MS = 2500;
@@ -34,22 +34,25 @@ export default function StartScreen({ onStart }) {
     gainNode.gain.setValueAtTime(BGM_VOLUME, ctx.currentTime);
 
     const unlockAndPlay = () => {
-      if (ctx.state === 'suspended') ctx.resume();
+      // Adicionado .catch() para absorver a rejeição quando a tela fecha
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
       if (audioRef.current && audioRef.current.paused) {
         audioRef.current.play().catch(() => {});
       }
     };
 
     unlockAndPlay();
-    window.addEventListener('pointerdown', unlockAndPlay);
-    window.addEventListener('keydown', unlockAndPlay);
+    window.addEventListener("pointerdown", unlockAndPlay);
+    window.addEventListener("keydown", unlockAndPlay);
 
     return () => {
-      window.removeEventListener('pointerdown', unlockAndPlay);
-      window.removeEventListener('keydown', unlockAndPlay);
+      window.removeEventListener("pointerdown", unlockAndPlay);
+      window.removeEventListener("keydown", unlockAndPlay);
       if (audioRef.current) audioRef.current.pause();
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close();
+      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+        audioCtxRef.current.close().catch(() => {});
       }
     };
   }, []);
@@ -59,16 +62,28 @@ export default function StartScreen({ onStart }) {
     setIsExiting(true);
 
     // Toca o som de confirmação pré-carregado no App.jsx sem latência
-    playSfx('select', 0.4);
+    playSfx("select", 0.4);
 
     if (audioCtxRef.current && gainNodeRef.current) {
       const ctx = audioCtxRef.current;
       const gain = gainNodeRef.current;
-      const fadeSeconds = EXIT_DELAY_MS / 1000;
 
-      gain.gain.cancelScheduledValues(ctx.currentTime);
-      gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + fadeSeconds);
+      // 1. Reativa o contexto se estivesse suspenso, capturando o cancelamento de forma silenciosa
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      // 2. Aplica o fade-out somente se o contexto de áudio estiver ativo e não fechado
+      if (ctx.state !== "closed") {
+        const fadeSeconds = EXIT_DELAY_MS / 1000;
+
+        gain.gain.cancelScheduledValues(ctx.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(
+          0.0001,
+          ctx.currentTime + fadeSeconds,
+        );
+      }
     }
 
     setTimeout(() => {
@@ -78,13 +93,13 @@ export default function StartScreen({ onStart }) {
 
   useEffect(() => {
     const handleKeyDown = () => handleStart();
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleStart]);
 
   return (
     <div
-      className={`start-container ${isExiting ? 'is-exiting' : ''}`}
+      className={`start-container ${isExiting ? "is-exiting" : ""}`}
       onClick={handleStart}
     >
       <div className="title-wrapper">
@@ -97,9 +112,7 @@ export default function StartScreen({ onStart }) {
         </h1>
       </div>
 
-      <p className="start-prompt">
-        Press any key or touch the screen to start
-      </p>
+      <p className="start-prompt">Press any key or touch the screen to start</p>
 
       <div className="wipe-overlay" />
     </div>

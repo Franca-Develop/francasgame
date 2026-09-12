@@ -1,121 +1,139 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import './FreeplayMenu.css';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import "./FreeplayMenu.css";
 
 // Importa o gerenciador global de SFX via Web Audio API
-import { playSfx } from '../../utils/sfxManager';
+import { playSfx } from "../../utils/useAudio";
 
-import kingDiceIcon from '../../assets/images/icons/king-dice-icon.png';
-import v1Icon from '../../assets/images/icons/v1-icon.png';
-import hornetIcon from '../../assets/images/icons/hornet-icon.png';
-import secretIcon from '../../assets/images/icons/secret-icon.png';
+import kingDiceIcon from "../../assets/images/ui/king-dice-icon.png";
+import v1Icon from "../../assets/images/ui/v1-icon.png";
+import hornetIcon from "../../assets/images/ui/hornet-icon.png";
+import secretIcon from "../../assets/images/ui/secret-icon.png";
 
-const DIFFICULTIES = ['EASY', 'NORMAL', 'HARD'];
+const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
 const SONG_LIST = [
   {
-    id: 'lets-go-gambling',
+    id: "lets-go-gambling",
     name: "LET'S GO GAMBLING",
-    character: 'KING DICE',
+    character: "KING DICE",
     icon: kingDiceIcon,
-    color: '#9B51E0'
+    color: "#9B51E0",
   },
   {
-    id: 'fight-or-flight',
-    name: 'FIGHT OR FLIGHT',
-    character: 'HORNET',
+    id: "fight-or-flight",
+    name: "FIGHT OR FLIGHT",
+    character: "HORNET",
     icon: hornetIcon,
-    color: '#FF0055'
+    color: "#FF0055",
   },
   {
-    id: 'castle-chorus',
-    name: 'CASTLE CHORUS',
-    character: 'V1',
+    id: "castle-chorus",
+    name: "CASTLE CHORUS",
+    character: "V1",
     icon: v1Icon,
-    color: '#1140c0'
+    color: "#1140c0",
   },
   {
-    id: 'last-stop',
-    name: 'LAST STOP',
-    character: '???',
+    id: "last-stop",
+    name: "LAST STOP",
+    character: "???",
     icon: secretIcon,
-    color: '#FFDE00',
-    isSecret: true
-  }
+    color: "#FFDE00",
+    isSecret: true,
+  },
 ];
 
-export default function FreeplayMenu({ 
-  sfxVolume = 1, 
-  isSecretUnlocked = false, 
-  onSelectSong, 
-  onBack 
+export default function FreeplayMenu({
+  sfxVolume = 1,
+  isSecretUnlocked = false,
+  onToggleSecret,
+  onStartSong,
+  onBack,
 }) {
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+  // Inicializa selecionando a primeira música (índice 0)
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const selectedItemRef = useRef(null);
 
-  const lastInputRef = useRef('keyboard');
+  const lastInputRef = useRef("keyboard");
   const mousePosRef = useRef({ x: 0, y: 0 });
 
   const visibleSongs = SONG_LIST.filter(
-    (song) => !song.isSecret || isSecretUnlocked
+    (song) => !song.isSecret || isSecretUnlocked,
   );
 
   useEffect(() => {
     if (selectedIndex >= visibleSongs.length) {
-      setSelectedIndex(-1);
+      setSelectedIndex(0);
     }
   }, [visibleSongs.length, selectedIndex]);
 
   useEffect(() => {
     if (selectedIndex !== -1 && selectedItemRef.current) {
       selectedItemRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
+        behavior: "smooth",
+        block: "nearest",
       });
     }
   }, [selectedIndex]);
 
-  const changeSong = useCallback((direction) => {
-    lastInputRef.current = 'keyboard';
-    playSfx('scroll', sfxVolume);
-    setSelectedIndex((prev) => {
-      if (prev === -1) {
-        return direction > 0 ? 0 : visibleSongs.length - 1;
-      }
-      return (prev + direction + visibleSongs.length) % visibleSongs.length;
-    });
-  }, [sfxVolume, visibleSongs.length]);
-
-  const changeDifficulty = useCallback((direction) => {
-    lastInputRef.current = 'keyboard';
-    playSfx('scroll', sfxVolume);
-    setDiffIndex((prev) => (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length);
-  }, [sfxVolume]);
-
-  const handleConfirm = useCallback((songToPlay) => {
-    const selectedSong = songToPlay || (selectedIndex !== -1 ? visibleSongs[selectedIndex] : null);
-
-    if (!selectedSong) return;
-
-    playSfx('select', sfxVolume);
-    if (onSelectSong) {
-      onSelectSong({
-        song: selectedSong,
-        difficulty: DIFFICULTIES[diffIndex]
+  const changeSong = useCallback(
+    (direction) => {
+      lastInputRef.current = "keyboard";
+      playSfx("scroll", sfxVolume);
+      setSelectedIndex((prev) => {
+        if (prev === -1) {
+          return direction > 0 ? 0 : visibleSongs.length - 1;
+        }
+        return (prev + direction + visibleSongs.length) % visibleSongs.length;
       });
-    }
-  }, [selectedIndex, visibleSongs, diffIndex, sfxVolume, onSelectSong]);
+    },
+    [sfxVolume, visibleSongs.length],
+  );
 
-  // Só troca para o modo 'mouse' se o ponteiro REALMENTE mudar de coordenadas X/Y
+  const changeDifficulty = useCallback(
+    (direction) => {
+      lastInputRef.current = "keyboard";
+      playSfx("scroll", sfxVolume);
+      setDiffIndex(
+        (prev) =>
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
+      );
+    },
+    [sfxVolume],
+  );
+
+  const handleConfirm = useCallback(
+    (songToPlay) => {
+      const selectedSong =
+        songToPlay ||
+        (selectedIndex !== -1 ? visibleSongs[selectedIndex] : null);
+
+      if (!selectedSong) return;
+
+      playSfx("select", sfxVolume, 1.1);
+      if (onStartSong) {
+        // Envia os dados da música junto da dificuldade selecionada
+        onStartSong({
+          ...selectedSong,
+          difficulty: DIFFICULTIES[diffIndex],
+        });
+      }
+    },
+    [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong],
+  );
+
   const handleMouseMoveItem = (e, index) => {
-    const hasMoved = e.clientX !== mousePosRef.current.x || e.clientY !== mousePosRef.current.y;
+    const hasMoved =
+      e.clientX !== mousePosRef.current.x ||
+      e.clientY !== mousePosRef.current.y;
 
     if (hasMoved) {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
-      lastInputRef.current = 'mouse';
+      lastInputRef.current = "mouse";
 
       if (selectedIndex !== index) {
-        playSfx('scroll', sfxVolume);
+        playSfx("scroll", sfxVolume);
         setSelectedIndex(index);
       }
     }
@@ -124,33 +142,37 @@ export default function FreeplayMenu({
   useEffect(() => {
     const handleKeyDown = (e) => {
       switch (e.key) {
-        case 'ArrowDown':
-        case 's':
-        case 'S':
+        case "ArrowDown":
+        case "s":
+        case "S":
           changeSong(1);
           break;
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
+        case "ArrowUp":
+        case "w":
+        case "W":
           changeSong(-1);
           break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
+        case "ArrowLeft":
+        case "a":
+        case "A":
           changeDifficulty(-1);
           break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
+        case "ArrowRight":
+        case "d":
+        case "D":
           changeDifficulty(1);
           break;
-        case 'Enter':
-        case ' ':
+        case "Enter":
+        case " ":
           handleConfirm();
           break;
-        case 'Escape':
-        case 'Backspace':
-          playSfx('cancel', sfxVolume);
+        case "7":
+          playSfx("select", sfxVolume);
+          if (onToggleSecret) onToggleSecret();
+          break;
+        case "Escape":
+        case "Backspace":
+          playSfx("cancel", sfxVolume);
           if (onBack) onBack();
           break;
         default:
@@ -158,21 +180,32 @@ export default function FreeplayMenu({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [changeSong, changeDifficulty, handleConfirm, onBack, sfxVolume]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    changeSong,
+    changeDifficulty,
+    handleConfirm,
+    onBack,
+    onToggleSecret,
+    sfxVolume,
+  ]);
 
   return (
     <div className="freeplay-container">
       <div className="freeplay-score-box">
-        <div className="score-label">PONTUAÇÃO MÁXIMA</div>
+        <div className="score-label">HIGH SCORE</div>
         <div className="score-value">000000</div>
         <div className="diff-selector">
-          <button type="button" onClick={() => changeDifficulty(-1)}>◀</button>
+          <button type="button" onClick={() => changeDifficulty(-1)}>
+            ◀
+          </button>
           <span className={`diff-text diff-${diffIndex}`}>
             {DIFFICULTIES[diffIndex]}
           </span>
-          <button type="button" onClick={() => changeDifficulty(1)}>▶</button>
+          <button type="button" onClick={() => changeDifficulty(1)}>
+            ▶
+          </button>
         </div>
       </div>
 
@@ -184,10 +217,10 @@ export default function FreeplayMenu({
             <div
               key={song.id}
               ref={isSelected ? selectedItemRef : null}
-              className={`freeplay-song-card ${isSelected ? 'selected' : ''}`}
+              className={`freeplay-song-card ${isSelected ? "selected" : ""}`}
               onMouseMove={(e) => handleMouseMoveItem(e, index)}
               onClick={() => {
-                lastInputRef.current = 'mouse';
+                lastInputRef.current = "mouse";
                 setSelectedIndex(index);
                 handleConfirm(song);
               }}
@@ -200,7 +233,7 @@ export default function FreeplayMenu({
                   alt={song.character}
                   className="song-icon"
                   onError={(e) => {
-                    e.target.style.display = 'none';
+                    e.target.style.display = "none";
                   }}
                 />
               </div>
@@ -210,7 +243,10 @@ export default function FreeplayMenu({
       </div>
 
       <footer className="freeplay-footer">
-        <span>[W/S] Escolher Música &nbsp;|&nbsp; [A/D] Dificuldade &nbsp;|&nbsp; [ENTER] Jogar &nbsp;|&nbsp; [ESC] Voltar</span>
+        <span>
+          [W/S] Escolher Música &nbsp;|&nbsp; [A/D] Dificuldade &nbsp;|&nbsp;
+          [ENTER] Jogar &nbsp;|&nbsp; [ESC] Voltar
+        </span>
       </footer>
     </div>
   );

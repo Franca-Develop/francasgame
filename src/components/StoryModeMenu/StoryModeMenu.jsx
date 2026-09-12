@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
 // Módulo de SFX com latência zero
-import { playSfx } from "../../utils/sfxManager";
+import { playSfx } from "../../utils/useAudio";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
@@ -22,25 +22,26 @@ export default function StoryMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       if (isConfirming) return;
       playSfx("scroll", sfxVolume);
       setDiffIndex(
-        (prev) => (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length
+        (prev) =>
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
       );
     },
-    [isConfirming, sfxVolume]
+    [isConfirming, sfxVolume],
   );
 
   const handleConfirm = useCallback(() => {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    playSfx("select", sfxVolume * 0.8);
-    playSfx("yeah", sfxVolume * 0.9);
+    playSfx("select", sfxVolume, 1.1);
+    playSfx("yeah", sfxVolume * 1.1, 1.0);
 
     setTimeout(() => {
       if (onSelectWeek) {
         onSelectWeek({
-          week: WEEK_DATA.id,
+          id: WEEK_DATA.id || "test-song",
+          name: WEEK_DATA.title || "WEEK 1",
           difficulty: DIFFICULTIES[diffIndex],
-          tracks: WEEK_DATA.tracks,
         });
       }
     }, 1000);

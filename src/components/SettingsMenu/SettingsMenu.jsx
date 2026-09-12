@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./SettingsMenu.css";
 
 // Importa o utilitário de SFX com latência zero
-import { playSfx } from "../../utils/sfxManager";
+import { playSfx } from "../../utils/useAudio";
 
 const KEYBIND_PRESETS = ["ARROWS", "WASD", "DFJK"];
 
-export default function OptionsMenu({
+export default function SettingsMenu({
   bgmVolume,
   setBgmVolume,
   sfxVolume,
@@ -15,6 +15,8 @@ export default function OptionsMenu({
   setAudioOffset,
   keybinds,
   setKeybinds,
+  isDownscroll,
+  setIsDownscroll,
   onBack,
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -26,6 +28,7 @@ export default function OptionsMenu({
     { id: "sfx", label: "SFX" },
     { id: "offset", label: "AUDIO OFFSET" },
     { id: "controls", label: "CONTROLS" },
+    { id: "scroll", label: "SCROLL" },
     { id: "back", label: "BACK" },
   ];
 
@@ -79,6 +82,8 @@ export default function OptionsMenu({
             KEYBIND_PRESETS.length;
           return KEYBIND_PRESETS[nextIndex];
         });
+      } else if (option === "scroll") {
+        setIsDownscroll((prev) => !prev);
       }
     },
     [
@@ -89,6 +94,7 @@ export default function OptionsMenu({
       setSfxVolume,
       setAudioOffset,
       setKeybinds,
+      setIsDownscroll,
     ],
   );
 
@@ -210,6 +216,17 @@ export default function OptionsMenu({
         <div className="option-control">
           <button onClick={() => changeValue(-1)}>◀</button>
           <span className="preset-value">{keybinds}</span>
+          <button onClick={() => changeValue(1)}>▶</button>
+        </div>
+      );
+    }
+    if (id === "scroll") {
+      return (
+        <div className="option-control">
+          <button onClick={() => changeValue(-1)}>◀</button>
+          <span className="preset-value">
+            {isDownscroll ? "DOWNSCROLL" : "UPSCROLL"}
+          </span>
           <button onClick={() => changeValue(1)}>▶</button>
         </div>
       );

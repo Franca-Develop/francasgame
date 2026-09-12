@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./MainMenu.css";
 
 // Importa o gerenciador global de SFX via Web Audio API
-import { playSfx } from "../../utils/sfxManager";
+import { playSfx } from "../../utils/useAudio";
 
 const MENU_OPTIONS = [
   { id: "story", label: "STORY MODE", color: "#FF0055" },
@@ -45,8 +45,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
     setIsConfirming(true);
 
     // Toca os efeitos de confirmação instantaneamente
-    playSfx("select", sfxVolume * 0.8);
-    playSfx("yeah", sfxVolume * 0.9);
+    playSfx("select", sfxVolume, 1.1);
 
     const selectedOption = MENU_OPTIONS[selectedIndex].id;
 
