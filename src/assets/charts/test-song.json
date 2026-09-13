@@ -1,21 +1,35 @@
 {
   "song": {
-    "title": "Test Track",
+    "title": "10s Quick Test",
     "bpm": 120,
     "speed": 1.5,
     "notes": [
-      { "time": 1000, "lane": 0, "length": 0 },
-      { "time": 1500, "lane": 3, "length": 0 },
-      { "time": 2000, "lane": 3, "length": 0 },
-      { "time": 2500, "lane": 0, "length": 0 },
-      { "time": 3000, "lane": 2, "length": 0 },
-      { "time": 3500, "lane": 1, "length": 0 },
-      { "time": 4000, "lane": 1, "length": 0 },
-      { "time": 4500, "lane": 2, "length": 0 },
-      { "time": 5000, "lane": 3, "length": 0 },
-      { "time": 5500, "lane": 1, "length": 0 },
-      { "time": 6000, "lane": 2, "length": 0 },
-      { "time": 6500, "lane": 0, "length": 0 }
+      {
+        "time": 1500,
+        "lane": 0,
+        "type": "normal"
+      },
+      {
+        "time": 2500,
+        "lane": 1,
+        "type": "normal"
+      },
+      {
+        "time": 3500,
+        "lane": 2,
+        "type": "normal"
+      },
+      {
+        "time": 5000,
+        "lane": 3,
+        "type": "hold",
+        "duration": 3000
+      },
+      {
+        "time": 9000,
+        "lane": 0,
+        "type": "normal"
+      }
     ]
   }
 }

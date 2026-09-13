@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./FreeplayMenu.css";
 
-// Importa o gerenciador global de SFX via Web Audio API
 import { playSfx } from "../../utils/useAudio";
+import { getHighScore } from "../../utils/highScoreUtils";
 
 import kingDiceIcon from "../../assets/images/ui/king-dice-icon.png";
 import v1Icon from "../../assets/images/ui/v1-icon.png";
@@ -14,28 +14,28 @@ const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 const SONG_LIST = [
   {
     id: "lets-go-gambling",
-    name: "LET'S GO GAMBLING",
+    title: "LET'S GO GAMBLING",
     character: "KING DICE",
     icon: kingDiceIcon,
     color: "#9B51E0",
   },
   {
     id: "fight-or-flight",
-    name: "FIGHT OR FLIGHT",
+    title: "FIGHT OR FLIGHT",
     character: "HORNET",
     icon: hornetIcon,
     color: "#FF0055",
   },
   {
     id: "castle-chorus",
-    name: "CASTLE CHORUS",
+    title: "CASTLE CHORUS",
     character: "V1",
     icon: v1Icon,
     color: "#1140c0",
   },
   {
     id: "last-stop",
-    name: "LAST STOP",
+    title: "LAST STOP",
     character: "???",
     icon: secretIcon,
     color: "#FFDE00",
@@ -50,17 +50,20 @@ export default function FreeplayMenu({
   onStartSong,
   onBack,
 }) {
-  // Inicializa selecionando a primeira música (índice 0)
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
+  const [highScore, setHighScore] = useState(0);
   const selectedItemRef = useRef(null);
 
   const lastInputRef = useRef("keyboard");
   const mousePosRef = useRef({ x: 0, y: 0 });
 
   const visibleSongs = SONG_LIST.filter(
-    (song) => !song.isSecret || isSecretUnlocked,
+    (song) => !song.isSecret || isSecretUnlocked
   );
+
+  const currentSong = visibleSongs[selectedIndex];
+  const currentDifficulty = DIFFICULTIES[diffIndex];
 
   useEffect(() => {
     if (selectedIndex >= visibleSongs.length) {
@@ -77,6 +80,16 @@ export default function FreeplayMenu({
     }
   }, [selectedIndex]);
 
+  // Carrega a pontuação máxima gravada no localStorage
+  useEffect(() => {
+    if (currentSong?.id) {
+      const score = getHighScore(currentSong.id, currentDifficulty);
+      setHighScore(score || 0);
+    } else {
+      setHighScore(0);
+    }
+  }, [selectedIndex, diffIndex, visibleSongs, currentSong, currentDifficulty]);
+
   const changeSong = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
@@ -88,7 +101,7 @@ export default function FreeplayMenu({
         return (prev + direction + visibleSongs.length) % visibleSongs.length;
       });
     },
-    [sfxVolume, visibleSongs.length],
+    [sfxVolume, visibleSongs.length]
   );
 
   const changeDifficulty = useCallback(
@@ -97,10 +110,10 @@ export default function FreeplayMenu({
       playSfx("scroll", sfxVolume);
       setDiffIndex(
         (prev) =>
-          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length
       );
     },
-    [sfxVolume],
+    [sfxVolume]
   );
 
   const handleConfirm = useCallback(
@@ -113,14 +126,13 @@ export default function FreeplayMenu({
 
       playSfx("select", sfxVolume, 1.1);
       if (onStartSong) {
-        // Envia os dados da música junto da dificuldade selecionada
         onStartSong({
           ...selectedSong,
           difficulty: DIFFICULTIES[diffIndex],
         });
       }
     },
-    [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong],
+    [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong]
   );
 
   const handleMouseMoveItem = (e, index) => {
@@ -195,7 +207,7 @@ export default function FreeplayMenu({
     <div className="freeplay-container">
       <div className="freeplay-score-box">
         <div className="score-label">HIGH SCORE</div>
-        <div className="score-value">000000</div>
+        <div className="score-value">{highScore}</div>
         <div className="diff-selector">
           <button type="button" onClick={() => changeDifficulty(-1)}>
             ◀
@@ -225,7 +237,7 @@ export default function FreeplayMenu({
                 handleConfirm(song);
               }}
             >
-              <span className="song-title">{song.name}</span>
+              <span className="song-title">{song.title}</span>
 
               <div className="icon-wrapper">
                 <img

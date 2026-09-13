@@ -1,21 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
-// Módulo de SFX com latência zero
 import { playSfx } from "../../utils/useAudio";
+import { getWeekHighScore } from "../../utils/highScoreUtils"; // Importa busca da semana
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
-// Configuração da Semana 1
 const WEEK_DATA = {
   id: "week1",
   title: "WEEK 1",
-  tracks: ["LET'S GO GAMBLING", "FIGHT OR FLIGHT", "CASTLE CHORUS"],
+  tracks: [
+    { id: "lets-go-gambling", title: "LET'S GO GAMBLING" },
+    { id: "fight-or-flight", title: "FIGHT OR FLIGHT" },
+    { id: "castle-chorus", title: "CASTLE CHORUS" },
+  ],
 };
 
-export default function StoryMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
-  const [diffIndex, setDiffIndex] = useState(1); // Normal por padrão
+export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
+  const [diffIndex, setDiffIndex] = useState(1);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [weekScore, setWeekScore] = useState(0);
 
   const changeDifficulty = useCallback(
     (direction) => {
@@ -23,10 +27,10 @@ export default function StoryMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       playSfx("scroll", sfxVolume);
       setDiffIndex(
         (prev) =>
-          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length
       );
     },
-    [isConfirming, sfxVolume],
+    [isConfirming, sfxVolume]
   );
 
   const handleConfirm = useCallback(() => {
@@ -39,13 +43,19 @@ export default function StoryMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
     setTimeout(() => {
       if (onSelectWeek) {
         onSelectWeek({
-          id: WEEK_DATA.id || "test-song",
-          name: WEEK_DATA.title || "WEEK 1",
+          ...WEEK_DATA,
           difficulty: DIFFICULTIES[diffIndex],
         });
       }
     }, 1000);
   }, [isConfirming, diffIndex, sfxVolume, onSelectWeek]);
+
+  // Recalcula o score total somando os pontos gravados de cada música na dificuldade atual
+  useEffect(() => {
+    const currentDifficulty = DIFFICULTIES[diffIndex];
+    const score = getWeekHighScore(WEEK_DATA.id, currentDifficulty);
+    setWeekScore(score);
+  }, [diffIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -80,25 +90,20 @@ export default function StoryMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
 
   return (
     <div className="story-container">
-      {/* Pontuação superior */}
       <header className="story-header">
-        <span className="week-score">WEEK SCORE: 0</span>
+        <span className="week-score">WEEK SCORE: {weekScore}</span>
       </header>
 
-      {/* Área central com fundo vermelho (Canvas reservado para arte/personagens) */}
       <main className="story-banner-container">
-        <div className="character-canvas-placeholder">
-          {/* A arte / Canvas dos personagens entrará aqui futuramente */}
-        </div>
+        <div className="character-canvas-placeholder" />
       </main>
 
-      {/* Painel inferior com Tracks, Semana e Dificuldade */}
       <footer className="story-controls-panel">
         <div className="tracks-column">
           <span className="tracks-header">TRACKS</span>
           <ul className="tracks-list">
-            {WEEK_DATA.tracks.map((track, i) => (
-              <li key={i}>{track}</li>
+            {WEEK_DATA.tracks.map((track) => (
+              <li key={track.id}>{track.title}</li>
             ))}
           </ul>
         </div>
