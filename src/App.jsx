@@ -165,6 +165,48 @@ export default function App() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+  // Função de depuração temporária para diagnosticar o carregamento dos charts
+  const debugChartLoader = (
+    songId,
+    chartFiles,
+    playerKeyFound,
+    opponentKeyFound,
+    playerNotes,
+    opponentNotes,
+  ) => {
+    const availableKeys = Object.keys(chartFiles);
+
+    console.group(`🔍 [DEBUG CHART] Diagnóstico para: "${songId}"`);
+    console.log("📂 Chaves detectadas pelo Vite no diretório:", availableKeys);
+
+    if (!playerKeyFound) {
+      console.error(
+        `❌ [FALHA] Chart do Player NÃO encontrado para "${songId}".\n` +
+          `   Procurado por arquivo terminando em: "/${songId}-player.json"`,
+      );
+    } else if (playerNotes.length === 0) {
+      console.warn(
+        `⚠️ [AVISO] Arquivo "${playerKeyFound}" foi lido, mas a lista de notas está VAZIA.`,
+      );
+    } else {
+      console.log(
+        `✅ [SUCESSO] Player Chart carregado (${playerKeyFound}) - Total de notas: ${playerNotes.length}`,
+      );
+    }
+
+    if (!opponentKeyFound) {
+      console.warn(
+        `⚠️ [AVISO] Chart do Oponente NÃO encontrado para "${songId}".`,
+      );
+    } else {
+      console.log(
+        `✅ [SUCESSO] Opponent Chart carregado (${opponentKeyFound}) - Total de notas: ${opponentNotes.length}`,
+      );
+    }
+
+    console.groupEnd();
+  };
+
   const loadSongAssets = async (item) => {
     const rawId =
       typeof item === "string" ? item : item.id || item.title || item.name;
@@ -173,25 +215,44 @@ export default function App() {
     const songTitle =
       typeof item === "string" ? item : item.title || item.name || songId;
 
-    // Monta as chaves de busca correspondentes no mapa do import.meta.glob
-    const playerKey = `./assets/charts/${songId}-player.json`;
-    const opponentKey = `./assets/charts/${songId}-opponent.json`;
+    const chartKeys = Object.keys(chartFiles);
 
-    const rawPlayer = chartFiles[playerKey] || { notes: [] };
-    const rawOpponent = chartFiles[opponentKey] || { notes: [] };
+    // Busca dinamicamente a chave terminando com o nome correto para evitar divergências de caminho
+    const playerKey = chartKeys.find((key) =>
+      key.toLowerCase().endsWith(`/${songId}-player.json`),
+    );
+    const opponentKey = chartKeys.find((key) =>
+      key.toLowerCase().endsWith(`/${songId}-opponent.json`),
+    );
 
-    // Normaliza: aceita tanto um array direto [...] quanto um objeto { notes: [...] }
-    const playerChart = Array.isArray(rawPlayer)
-      ? { notes: rawPlayer }
-      : rawPlayer.notes
-        ? rawPlayer
-        : { notes: rawPlayer.playerNotes || [] };
+    const rawPlayer = playerKey ? chartFiles[playerKey] : [];
+    const rawOpponent = opponentKey ? chartFiles[opponentKey] : [];
 
-    const opponentChart = Array.isArray(rawOpponent)
-      ? { notes: rawOpponent }
-      : rawOpponent.notes
-        ? rawOpponent
-        : { notes: rawOpponent.opponentNotes || [] };
+    // Extrai array de notas tratando múltiplos formatos de JSON
+    const extractNotes = (raw) => {
+      if (Array.isArray(raw)) return raw;
+      if (Array.isArray(raw?.notes)) return raw.notes;
+      if (Array.isArray(raw?.playerNotes)) return raw.playerNotes;
+      if (Array.isArray(raw?.opponentNotes)) return raw.opponentNotes;
+      if (Array.isArray(raw?.song?.notes)) return raw.song.notes;
+      return [];
+    };
+
+    const playerNotesArray = extractNotes(rawPlayer);
+    const opponentNotesArray = extractNotes(rawOpponent);
+
+    // Executa o diagnóstico no console
+    debugChartLoader(
+      songId,
+      chartFiles,
+      playerKey,
+      opponentKey,
+      playerNotesArray,
+      opponentNotesArray,
+    );
+
+    const playerChart = { notes: playerNotesArray };
+    const opponentChart = { notes: opponentNotesArray };
 
     const audioUrl = new URL(
       `./assets/audio/musics/${songId}.ogg`,

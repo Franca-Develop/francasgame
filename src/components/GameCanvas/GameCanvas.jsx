@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import testPlayerChart from "../../assets/charts/test-song.json";
-import testOpponentChart from "../../assets/charts/test-song.json";
 import "./GameCanvas.css";
 
 const DIFFICULTY_CONFIG = {
@@ -77,9 +75,13 @@ const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
 };
 
 // Auxiliar seguro para extrair notas independente da estrutura do JSON
+// Auxiliar imune a valores nulos
 const parseNotesArray = (rawChart) => {
+  if (!rawChart) return [];
   if (Array.isArray(rawChart)) return rawChart;
   if (Array.isArray(rawChart?.notes)) return rawChart.notes;
+  if (Array.isArray(rawChart?.playerNotes)) return rawChart.playerNotes;
+  if (Array.isArray(rawChart?.opponentNotes)) return rawChart.opponentNotes;
   if (Array.isArray(rawChart?.song?.notes)) return rawChart.song.notes;
   return [];
 };
@@ -144,11 +146,9 @@ export default function GameCanvas({
     DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.NORMAL;
 
   // Extração flexível e imune a estruturas variadas
-  const playerNotes =
-    parseNotesArray(songData?.playerChart) || parseNotesArray(testPlayerChart);
-  const opponentNotes =
-    parseNotesArray(songData?.opponentChart) ||
-    parseNotesArray(testOpponentChart);
+  // Substitua o trecho antigo de notas por este:
+  const playerNotes = parseNotesArray(songData?.playerChart);
+  const opponentNotes = parseNotesArray(songData?.opponentChart);
 
   const playerNotesRef = useRef(playerNotes);
   useEffect(() => {
