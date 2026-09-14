@@ -34,19 +34,14 @@ const DIFFICULTY_CONFIG = {
 };
 
 const NOTE_SIZE = 75;
-
 const TARGET_Y_UPSCROLL = 100;
 const TARGET_Y_DOWNSCROLL = 560;
 
-// Espaçamento ajustado (85px entre cada seta) para manter um respiro visual
 const OPPONENT_LANE_X = [60, 145, 230, 315];
 const PLAYER_LANE_X = [890, 975, 1060, 1145];
 const LANE_COLORS = ["#C24B99", "#00FFFF", "#12FA05", "#F9393F"];
-
-// Ângulos de rotação para cada direção: Esquerda (-90deg), Baixo (180deg), Cima (0deg), Direita (90deg)
 const LANE_ANGLES = [-Math.PI / 2, Math.PI, 0, Math.PI / 2];
 
-// Desenha a seta apontada para a direção correta conforme a lane
 const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
   const half = size / 2;
   const quarter = size / 4;
@@ -79,6 +74,14 @@ const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
   ctx.stroke();
 
   ctx.restore();
+};
+
+// Auxiliar seguro para extrair notas independente da estrutura do JSON
+const parseNotesArray = (rawChart) => {
+  if (Array.isArray(rawChart)) return rawChart;
+  if (Array.isArray(rawChart?.notes)) return rawChart.notes;
+  if (Array.isArray(rawChart?.song?.notes)) return rawChart.song.notes;
+  return [];
 };
 
 export default function GameCanvas({
@@ -129,7 +132,6 @@ export default function GameCanvas({
   const totalNotesPlayedRef = useRef(0);
 
   const currentTimeRef = useRef(0);
-  const currentLoopRef = useRef(0);
   const hasExitedRef = useRef(false);
   const bgImageRef = useRef(null);
 
@@ -141,35 +143,23 @@ export default function GameCanvas({
   const currentDiffConfig =
     DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.NORMAL;
 
+  // Extração flexível e imune a estruturas variadas
   const playerNotes =
-    songData?.playerChart?.notes ||
-    songData?.playerChart?.song?.notes ||
-    songData?.chartData?.playerNotes ||
-    songData?.chartData?.song?.notes ||
-    testPlayerChart?.notes ||
-    [];
-
+    parseNotesArray(songData?.playerChart) || parseNotesArray(testPlayerChart);
   const opponentNotes =
-    songData?.opponentChart?.notes ||
-    songData?.opponentChart?.song?.notes ||
-    songData?.chartData?.opponentNotes ||
-    testOpponentChart?.notes ||
-    [];
+    parseNotesArray(songData?.opponentChart) ||
+    parseNotesArray(testOpponentChart);
 
-  const bpm =
-    songData?.playerChart?.bpm || songData?.chartData?.song?.bpm || 120;
+  const playerNotesRef = useRef(playerNotes);
+  useEffect(() => {
+    playerNotesRef.current = playerNotes;
+  }, [playerNotes]);
+
+  const bpm = songData?.playerChart?.bpm || songData?.bpm || 120;
   const bpmMultiplier = bpm / 120;
-  const baseSpeed =
-    songData?.playerChart?.speed || songData?.chartData?.song?.speed || 1.5;
+  const baseSpeed = songData?.playerChart?.speed || songData?.speed || 1.5;
   const scrollSpeed =
     baseSpeed * bpmMultiplier * currentDiffConfig.speedMultiplier * 0.5;
-
-  const allNotes = [...playerNotes, ...opponentNotes];
-  const maxNoteTime =
-    allNotes.length > 0
-      ? Math.max(...allNotes.map((n) => n.time + (n.duration || 0)))
-      : 0;
-  const chartLoopDuration = maxNoteTime > 0 ? maxNoteTime + 2000 : 10000;
 
   useEffect(() => {
     if (songData?.bgUrl) {
@@ -189,7 +179,6 @@ export default function GameCanvas({
   useEffect(() => {
     hitNotesRef.current.clear();
     opponentHitNotesRef.current.clear();
-    currentLoopRef.current = 0;
     hasExitedRef.current = false;
 
     scoreRef.current = 0;
@@ -250,9 +239,10 @@ export default function GameCanvas({
   const checkHit = (lane) => {
     const now = currentTimeRef.current;
     const maxWindow = 180;
+    const currentNotes = playerNotesRef.current;
 
-    for (let i = 0; i < playerNotes.length; i++) {
-      const note = playerNotes[i];
+    for (let i = 0; i < currentNotes.length; i++) {
+      const note = currentNotes[i];
       if (note.lane !== lane || hitNotesRef.current.has(i)) continue;
 
       const timeDiff = note.time - now;
@@ -317,85 +307,73 @@ export default function GameCanvas({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [playerNotes, currentDiffConfig]);
+  }, [currentDiffConfig]);
 
   useEffect(() => {
-  const canvas = canvasRef.current;
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
 
-  const currentAudioUrl = songData?.audioUrl || "";
-  const audio = new Audio(currentAudioUrl);
+    const currentAudioUrl = songData?.audioUrl || "";
+    const audio = new Audio(currentAudioUrl);
 
-  audio.volume = Math.max(0, Math.min(1, optionsRef.current.bgmVolume));
-  audio.loop = false;
-  audioRef.current = audio;
+    audio.volume = Math.max(0, Math.min(1, optionsRef.current.bgmVolume));
+    audio.loop = false;
+    audioRef.current = audio;
 
-  let animationFrameId;
-  const startTime = Date.now();
-  let playPromise = null;
+    let animationFrameId;
+    const startTime = Date.now();
+    let playPromise = null;
 
-  const handleAudioEnd = () => {
-    if (!hasExitedRef.current) {
-      hasExitedRef.current = true;
-      if (callbacksRef.current.onComplete) {
-        callbacksRef.current.onComplete(scoreRef.current);
-      } else if (callbacksRef.current.onExit) {
-        callbacksRef.current.onExit(scoreRef.current);
+    const handleAudioEnd = () => {
+      if (!hasExitedRef.current) {
+        hasExitedRef.current = true;
+        if (callbacksRef.current.onComplete) {
+          callbacksRef.current.onComplete(scoreRef.current);
+        } else if (callbacksRef.current.onExit) {
+          callbacksRef.current.onExit(scoreRef.current);
+        }
       }
+    };
+
+    audio.addEventListener("ended", handleAudioEnd);
+
+    playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        if (error.name === "AbortError") return;
+        console.warn("Áudio aguardando interação para iniciar.");
+      });
     }
-  };
 
-  audio.addEventListener("ended", handleAudioEnd);
+    const handleFirstInteraction = () => {
+      if (audio.paused && audio.readyState >= 2) {
+        audio.play().catch(() => {});
+      }
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("click", handleFirstInteraction);
+    };
+    window.addEventListener("keydown", handleFirstInteraction);
+    window.addEventListener("click", handleFirstInteraction);
 
-  // Inicia o áudio tratando o bloqueio do navegador e o cancelamento do Strict Mode
-  playPromise = audio.play();
-  if (playPromise !== undefined) {
-    playPromise.catch((error) => {
-      // Ignora erro de interrupção causado por re-renders rápidos do React
-      if (error.name === "AbortError") return;
-      console.warn("Áudio aguardando interação do usuário para iniciar.");
-    });
-  }
+    const targetY = isDownscroll ? TARGET_Y_DOWNSCROLL : TARGET_Y_UPSCROLL;
+    const maxMissWindow =
+      currentDiffConfig.judgments[currentDiffConfig.judgments.length - 1]
+        .window;
 
-  // Tentar destravar o áudio na primeira tecla pressionada se a política de Autoplay bloquear
-  const handleFirstInteraction = () => {
-    if (audio.paused && audio.readyState >= 2) {
-      audio.play().catch(() => {});
-    }
-    window.removeEventListener("keydown", handleFirstInteraction);
-    window.removeEventListener("click", handleFirstInteraction);
-  };
-  window.addEventListener("keydown", handleFirstInteraction);
-  window.addEventListener("click", handleFirstInteraction);
-
-  const targetY = isDownscroll ? TARGET_Y_DOWNSCROLL : TARGET_Y_UPSCROLL;
-  const maxMissWindow =
-    currentDiffConfig.judgments[currentDiffConfig.judgments.length - 1].window;
-
-  const render = () => {
+    const render = () => {
       const isAudioPlaying =
         audioRef.current &&
         !audioRef.current.paused &&
         audioRef.current.currentTime > 0;
-
       const offsetMs = optionsRef.current.audioOffset || 0;
+
+      // Tempo linear contínuo (sem reset de módulo %)
       const realTime = isAudioPlaying
         ? audioRef.current.currentTime * 1000 + offsetMs
         : Date.now() - startTime + offsetMs;
 
-      const currentLoop = Math.floor(realTime / chartLoopDuration);
-      const effectiveChartTime = realTime % chartLoopDuration;
-
-      if (currentLoop !== currentLoopRef.current) {
-        currentLoopRef.current = currentLoop;
-        hitNotesRef.current.clear();
-        opponentHitNotesRef.current.clear();
-        activeHoldsRef.current.clear();
-        opponentActiveHoldsRef.current.clear();
-      }
-
-      currentTimeRef.current = effectiveChartTime;
+      currentTimeRef.current = realTime;
 
       if (bgImageRef.current) {
         ctx.drawImage(bgImageRef.current, 0, 0, canvas.width, canvas.height);
@@ -406,7 +384,6 @@ export default function GameCanvas({
 
       const drawStrums = (laneOffsets, activeMap) => {
         laneOffsets.forEach((x, lane) => {
-          const isPressed = activeMap[lane];
           drawArrow(
             ctx,
             x,
@@ -414,7 +391,7 @@ export default function GameCanvas({
             NOTE_SIZE,
             lane,
             LANE_COLORS[lane],
-            isPressed,
+            activeMap[lane],
           );
         });
       };
@@ -424,10 +401,7 @@ export default function GameCanvas({
 
       // Botplay Oponente
       opponentNotes.forEach((note, index) => {
-        if (
-          note.time <= effectiveChartTime &&
-          !opponentHitNotesRef.current.has(index)
-        ) {
+        if (note.time <= realTime && !opponentHitNotesRef.current.has(index)) {
           opponentHitNotesRef.current.add(index);
           opponentActiveKeysRef.current[note.lane] = true;
 
@@ -450,7 +424,7 @@ export default function GameCanvas({
       [0, 1, 2, 3].forEach((lane) => {
         const hold = opponentActiveHoldsRef.current.get(lane);
         if (hold) {
-          if (effectiveChartTime >= hold.endTime) {
+          if (realTime >= hold.endTime) {
             opponentActiveHoldsRef.current.delete(lane);
             opponentActiveKeysRef.current[lane] = false;
           } else {
@@ -466,7 +440,7 @@ export default function GameCanvas({
         const activeHold = activeHoldsRef.current.get(lane);
         if (activeHold) {
           const isKeyDown = activeKeysRef.current[lane];
-          if (!isKeyDown && effectiveChartTime < activeHold.endTime - 50) {
+          if (!isKeyDown && realTime < activeHold.endTime - 50) {
             hitNotesRef.current.add(activeHold.index);
             activeHoldsRef.current.delete(lane);
             setLastRating({
@@ -475,7 +449,7 @@ export default function GameCanvas({
               id: ++hitCountRef.current,
             });
             recordStats(0, true);
-          } else if (effectiveChartTime >= activeHold.endTime) {
+          } else if (realTime >= activeHold.endTime) {
             hitNotesRef.current.add(activeHold.index);
             activeHoldsRef.current.delete(lane);
           }
@@ -495,7 +469,7 @@ export default function GameCanvas({
 
           if (hitSet.has(index) && !isBeingHeld) return;
 
-          const timeDiff = note.time - effectiveChartTime;
+          const timeDiff = note.time - realTime;
 
           if (
             isPlayerSide &&
@@ -525,10 +499,7 @@ export default function GameCanvas({
 
             if (!isDownscroll) {
               if (isBeingHeld) {
-                const remainingTime = Math.max(
-                  0,
-                  holdEndTime - effectiveChartTime,
-                );
+                const remainingTime = Math.max(0, holdEndTime - realTime);
                 tailTop = targetY + NOTE_SIZE / 2;
                 tailHeight = remainingTime * scrollSpeed;
               } else {
@@ -542,10 +513,7 @@ export default function GameCanvas({
               }
             } else {
               if (isBeingHeld) {
-                const remainingTime = Math.max(
-                  0,
-                  holdEndTime - effectiveChartTime,
-                );
+                const remainingTime = Math.max(0, holdEndTime - realTime);
                 tailHeight = remainingTime * scrollSpeed;
                 tailTop = targetY + NOTE_SIZE / 2 - tailHeight;
               } else {
@@ -597,7 +565,6 @@ export default function GameCanvas({
         activeHoldsRef.current,
         true,
       );
-
       renderNotesForSide(
         opponentNotes,
         OPPONENT_LANE_X,
@@ -609,38 +576,31 @@ export default function GameCanvas({
       animationFrameId = requestAnimationFrame(render);
     };
 
-  render();
+    render();
 
-  return () => {
-    cancelAnimationFrame(animationFrameId);
-    window.removeEventListener("keydown", handleFirstInteraction);
-    window.removeEventListener("click", handleFirstInteraction);
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      window.removeEventListener("click", handleFirstInteraction);
 
-    if (audioRef.current) {
-      audioRef.current.removeEventListener("ended", handleAudioEnd);
-
-      // Espera a Promise de play() resolver antes de executar pause()
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            audio.pause();
-          })
-          .catch(() => {});
-      } else {
-        audio.pause();
+      if (audioRef.current) {
+        audioRef.current.removeEventListener("ended", handleAudioEnd);
+        if (playPromise !== undefined) {
+          playPromise.then(() => audio.pause()).catch(() => {});
+        } else {
+          audio.pause();
+        }
+        audioRef.current = null;
       }
-      audioRef.current = null;
-    }
-  };
-}, [
-  songData?.audioUrl,
-  isDownscroll,
-  scrollSpeed,
-  chartLoopDuration,
-  playerNotes,
-  opponentNotes,
-  currentDiffConfig,
-]);
+    };
+  }, [
+    songData?.audioUrl,
+    isDownscroll,
+    scrollSpeed,
+    playerNotes,
+    opponentNotes,
+    currentDiffConfig,
+  ]);
 
   return (
     <div className="game-wrapper">
@@ -654,9 +614,7 @@ export default function GameCanvas({
 
         <div className="game-ui-overlay">
           <div
-            className={`fnf-hud-container ${
-              isDownscroll ? "position-top" : "position-bottom"
-            }`}
+            className={`fnf-hud-container ${isDownscroll ? "position-top" : "position-bottom"}`}
           >
             <div className="fnf-song-bar">
               <span className="fnf-song-title">
