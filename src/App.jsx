@@ -25,6 +25,12 @@ const bgImages = import.meta.glob(
   },
 );
 
+// Carrega todos os arquivos JSON de charts na memória (igual feito com bgImages)
+const chartFiles = import.meta.glob("./assets/charts/*.json", {
+  eager: true,
+  import: "default",
+});
+
 const LANE_ANIMATIONS = ["singLEFT", "singDOWN", "singUP", "singRIGHT"];
 
 export default function App() {
@@ -167,16 +173,25 @@ export default function App() {
     const songTitle =
       typeof item === "string" ? item : item.title || item.name || songId;
 
-    let chartData = null;
-    try {
-      const chartModule = await import(`./assets/charts/${songId}.json`);
-      chartData = chartModule.default;
-    } catch (e) {
-      console.error(
-        `Erro ao carregar o chart 'src/assets/charts/${songId}.json':`,
-        e,
-      );
-    }
+    // Monta as chaves de busca correspondentes no mapa do import.meta.glob
+    const playerKey = `./assets/charts/${songId}-player.json`;
+    const opponentKey = `./assets/charts/${songId}-opponent.json`;
+
+    const rawPlayer = chartFiles[playerKey] || { notes: [] };
+    const rawOpponent = chartFiles[opponentKey] || { notes: [] };
+
+    // Normaliza: aceita tanto um array direto [...] quanto um objeto { notes: [...] }
+    const playerChart = Array.isArray(rawPlayer)
+      ? { notes: rawPlayer }
+      : rawPlayer.notes
+        ? rawPlayer
+        : { notes: rawPlayer.playerNotes || [] };
+
+    const opponentChart = Array.isArray(rawOpponent)
+      ? { notes: rawOpponent }
+      : rawOpponent.notes
+        ? rawOpponent
+        : { notes: rawOpponent.opponentNotes || [] };
 
     const audioUrl = new URL(
       `./assets/audio/musics/${songId}.ogg`,
@@ -193,7 +208,8 @@ export default function App() {
       title: songTitle,
       audioUrl,
       bgUrl,
-      chartData,
+      playerChart,
+      opponentChart,
     };
   };
 
@@ -204,7 +220,6 @@ export default function App() {
     setCurrentScreen("menu");
   };
 
-  // Iniciar modo Freeplay extraindo a dificuldade selecionada
   const handleStartGameplay = async (song) => {
     setWeekPlaylist([]);
     setActiveWeekId(null);
@@ -218,7 +233,6 @@ export default function App() {
     setCurrentScreen("gameplay");
   };
 
-  // Iniciar modo Story Mode extraindo a dificuldade da Semana
   const handleStartWeek = async (weekData) => {
     const songList = weekData?.tracks || weekData?.songs;
     if (!songList || songList.length === 0) return;
@@ -235,7 +249,6 @@ export default function App() {
     setCurrentScreen("gameplay");
   };
 
-  // Avançar mantendo a dificuldade escolhida
   const handleNextSongInWeek = async () => {
     const nextIndex = currentSongIndex + 1;
 
@@ -253,18 +266,15 @@ export default function App() {
   };
 
   const handleSongComplete = async (finalScore) => {
-    // 1. Salva a pontuação individual da música (Freeplay)
     if (selectedSongData?.id) {
       saveHighScore(selectedSongData.id, currentDifficulty, finalScore);
     }
 
-    // 2. Se estiver jogando o Story Mode
     if (activeWeekId && weekPlaylist.length > 0) {
       const totalSoFar = accumulatedWeekScore + finalScore;
       const nextIndex = currentSongIndex + 1;
 
       if (nextIndex < weekPlaylist.length) {
-        // Passa para a próxima música acumulando o placar
         setAccumulatedWeekScore(totalSoFar);
         setCurrentSongIndex(nextIndex);
 
@@ -272,18 +282,15 @@ export default function App() {
         const songPayload = await loadSongAssets(nextSongItem);
         setSelectedSongData({ ...songPayload, difficulty: currentDifficulty });
       } else {
-        // Semana FINALIZADA: Salva o recorde total da Semana
         saveWeekHighScore(activeWeekId, currentDifficulty, totalSoFar);
         setIsHardWeekCompleted(true);
 
-        // Limpa a fila
         setWeekPlaylist([]);
         setActiveWeekId(null);
         setAccumulatedWeekScore(0);
         setCurrentScreen("menu");
       }
     } else {
-      // Se for apenas uma música do Freeplay
       setCurrentScreen("menu");
     }
   };

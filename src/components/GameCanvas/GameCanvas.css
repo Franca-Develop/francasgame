@@ -1,26 +1,120 @@
-.game-canvas-container {
-  width: 100vw;
-  height: 100vh;
-  background-color: #111;
+/* Container de Tela Cheia para Centralização */
+.game-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #050508;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Dimensão Fixa do Jogo */
+.game-canvas-container {
   position: relative;
+  width: 1280px;
+  height: 720px;
+  background-color: #000000;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
 }
 
 .game-canvas {
-  background-color: #1a1a24;
-  border: 4px solid #333;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
+/* Camada da Interface por Cima do Canvas */
 .game-ui-overlay {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  color: #fff;
-  font-family: sans-serif;
-  font-size: 14px;
-  opacity: 0.7;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  font-family: "VCR OSD Mono", "Courier New", Courier, monospace;
+  user-select: none;
+}
+
+/* HUD Principal */
+.fnf-hud-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.fnf-hud-container.position-bottom {
+  bottom: 25px;
+}
+
+.fnf-hud-container.position-top {
+  top: 25px;
+}
+
+.fnf-song-bar {
+  background: rgba(0, 0, 0, 0.65);
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.fnf-song-title {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.fnf-stats-text {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 900;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  display: flex;
+  gap: 10px;
+}
+
+.fnf-divider {
+  color: #666666;
+}
+
+/* Popups de Ratings */
+.rating-popup {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: 900;
+  text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  animation: popupFade 0.4s ease-out forwards;
+}
+
+@keyframes popupFade {
+  0% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -75%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Dica de Controles */
+.exit-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
 }

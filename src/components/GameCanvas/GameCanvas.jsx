@@ -1,46 +1,85 @@
 import React, { useEffect, useRef, useState } from "react";
-import testChart from "../../assets/charts/test-song.json";
+import testPlayerChart from "../../assets/charts/test-song.json";
+import testOpponentChart from "../../assets/charts/test-song.json";
 import "./GameCanvas.css";
 
 const DIFFICULTY_CONFIG = {
   EASY: {
     speedMultiplier: 0.8,
     judgments: [
-      { name: "SICK", window: 50, score: 350, color: "#00FFFF" },
-      { name: "GOOD", window: 100, score: 200, color: "#4CAF50" },
-      { name: "BAD", window: 150, score: 100, color: "#FF9800" },
-      { name: "SHIT", window: 180, score: 50, color: "#F44336" },
+      { name: "SICK", window: 50, score: 350, weight: 1.0, color: "#00FFFF" },
+      { name: "GOOD", window: 100, score: 200, weight: 0.75, color: "#4CAF50" },
+      { name: "BAD", window: 150, score: 100, weight: 0.5, color: "#FF9800" },
+      { name: "SHIT", window: 180, score: 50, weight: 0.25, color: "#F44336" },
     ],
   },
   NORMAL: {
     speedMultiplier: 1.0,
     judgments: [
-      { name: "SICK", window: 45, score: 350, color: "#00FFFF" },
-      { name: "GOOD", window: 90, score: 200, color: "#4CAF50" },
-      { name: "BAD", window: 135, score: 100, color: "#FF9800" },
-      { name: "SHIT", window: 160, score: 50, color: "#F44336" },
+      { name: "SICK", window: 45, score: 350, weight: 1.0, color: "#00FFFF" },
+      { name: "GOOD", window: 90, score: 200, weight: 0.75, color: "#4CAF50" },
+      { name: "BAD", window: 135, score: 100, weight: 0.5, color: "#FF9800" },
+      { name: "SHIT", window: 160, score: 50, weight: 0.25, color: "#F44336" },
     ],
   },
   HARD: {
     speedMultiplier: 1.25,
     judgments: [
-      { name: "SICK", window: 35, score: 350, color: "#00FFFF" },
-      { name: "GOOD", window: 75, score: 200, color: "#4CAF50" },
-      { name: "BAD", window: 110, score: 100, color: "#FF9800" },
-      { name: "SHIT", window: 130, score: 50, color: "#F44336" },
+      { name: "SICK", window: 35, score: 350, weight: 1.0, color: "#00FFFF" },
+      { name: "GOOD", window: 75, score: 200, weight: 0.75, color: "#4CAF50" },
+      { name: "BAD", window: 110, score: 100, weight: 0.5, color: "#FF9800" },
+      { name: "SHIT", window: 130, score: 50, weight: 0.25, color: "#F44336" },
     ],
   },
 };
 
-const NOTE_SIZE = 60;
+const NOTE_SIZE = 75;
+
 const TARGET_Y_UPSCROLL = 100;
 const TARGET_Y_DOWNSCROLL = 560;
 
-// Pistas separadas (Esquerda: Opponent | Direita: Player)
-const OPPONENT_LANE_X = [100, 170, 240, 310];
-const PLAYER_LANE_X = [900, 970, 1040, 1110];
-
+// Espaçamento ajustado (85px entre cada seta) para manter um respiro visual
+const OPPONENT_LANE_X = [60, 145, 230, 315];
+const PLAYER_LANE_X = [890, 975, 1060, 1145];
 const LANE_COLORS = ["#C24B99", "#00FFFF", "#12FA05", "#F9393F"];
+
+// Ângulos de rotação para cada direção: Esquerda (-90deg), Baixo (180deg), Cima (0deg), Direita (90deg)
+const LANE_ANGLES = [-Math.PI / 2, Math.PI, 0, Math.PI / 2];
+
+// Desenha a seta apontada para a direção correta conforme a lane
+const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
+  const half = size / 2;
+  const quarter = size / 4;
+
+  ctx.save();
+  ctx.translate(x + half, y + half);
+  ctx.rotate(LANE_ANGLES[lane]);
+
+  ctx.beginPath();
+  ctx.moveTo(0, -half);
+  ctx.lineTo(half, 0);
+  ctx.lineTo(quarter, 0);
+  ctx.lineTo(quarter, half);
+  ctx.lineTo(-quarter, half);
+  ctx.lineTo(-quarter, 0);
+  ctx.lineTo(-half, 0);
+  ctx.closePath();
+
+  if (isPressed) {
+    ctx.fillStyle = color;
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "rgba(20, 20, 30, 0.6)";
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+
+  ctx.restore();
+};
 
 export default function GameCanvas({
   songData,
@@ -57,19 +96,16 @@ export default function GameCanvas({
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Guarda callbacks em Refs para não reiniciar o useEffect no re-render
   const callbacksRef = useRef({});
   callbacksRef.current = { onExit, onComplete, onPlayerHit, onOpponentHit };
 
   const optionsRef = useRef({});
   optionsRef.current = { keybinds, audioOffset, bgmVolume };
 
-  // Estados dos Controles (Player)
   const activeKeysRef = useRef({ 0: false, 1: false, 2: false, 3: false });
   const hitNotesRef = useRef(new Set());
   const activeHoldsRef = useRef(new Map());
 
-  // Estados do Bot (Opponent)
   const opponentActiveKeysRef = useRef({
     0: false,
     1: false,
@@ -80,9 +116,17 @@ export default function GameCanvas({
   const opponentActiveHoldsRef = useRef(new Map());
   const opponentKeyTimersRef = useRef({ 0: 0, 1: 0, 2: 0, 3: 0 });
 
+  const hitCountRef = useRef(0);
+
   const [score, setScore] = useState(0);
-  const scoreRef = useRef(0); // Ref para garantir o valor atualizado nos callbacks
+  const [misses, setMisses] = useState(0);
+  const [accuracy, setAccuracy] = useState("0.00");
   const [lastRating, setLastRating] = useState(null);
+
+  const scoreRef = useRef(0);
+  const missesRef = useRef(0);
+  const totalHitWeightRef = useRef(0);
+  const totalNotesPlayedRef = useRef(0);
 
   const currentTimeRef = useRef(0);
   const currentLoopRef = useRef(0);
@@ -97,18 +141,33 @@ export default function GameCanvas({
   const currentDiffConfig =
     DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.NORMAL;
 
-  const chartData = songData?.chartData || testChart;
-  const notes = chartData?.song?.notes || [];
+  const playerNotes =
+    songData?.playerChart?.notes ||
+    songData?.playerChart?.song?.notes ||
+    songData?.chartData?.playerNotes ||
+    songData?.chartData?.song?.notes ||
+    testPlayerChart?.notes ||
+    [];
 
-  const bpm = chartData?.song?.bpm || 120;
+  const opponentNotes =
+    songData?.opponentChart?.notes ||
+    songData?.opponentChart?.song?.notes ||
+    songData?.chartData?.opponentNotes ||
+    testOpponentChart?.notes ||
+    [];
+
+  const bpm =
+    songData?.playerChart?.bpm || songData?.chartData?.song?.bpm || 120;
   const bpmMultiplier = bpm / 120;
-  const baseSpeed = chartData?.song?.speed || 1.5;
+  const baseSpeed =
+    songData?.playerChart?.speed || songData?.chartData?.song?.speed || 1.5;
   const scrollSpeed =
     baseSpeed * bpmMultiplier * currentDiffConfig.speedMultiplier * 0.5;
 
+  const allNotes = [...playerNotes, ...opponentNotes];
   const maxNoteTime =
-    notes.length > 0
-      ? Math.max(...notes.map((n) => n.time + (n.duration || 0)))
+    allNotes.length > 0
+      ? Math.max(...allNotes.map((n) => n.time + (n.duration || 0)))
       : 0;
   const chartLoopDuration = maxNoteTime > 0 ? maxNoteTime + 2000 : 10000;
 
@@ -132,9 +191,38 @@ export default function GameCanvas({
     opponentHitNotesRef.current.clear();
     currentLoopRef.current = 0;
     hasExitedRef.current = false;
+
     scoreRef.current = 0;
+    missesRef.current = 0;
+    totalHitWeightRef.current = 0;
+    totalNotesPlayedRef.current = 0;
+
     setScore(0);
+    setMisses(0);
+    setAccuracy("0.00");
+    setLastRating(null);
   }, [songData]);
+
+  const recordStats = (weight = 0, isMiss = false) => {
+    if (isMiss) {
+      missesRef.current += 1;
+      setMisses(missesRef.current);
+    } else {
+      totalHitWeightRef.current += weight;
+    }
+
+    totalNotesPlayedRef.current += 1;
+
+    const acc =
+      totalNotesPlayedRef.current > 0
+        ? (
+            (totalHitWeightRef.current / totalNotesPlayedRef.current) *
+            100
+          ).toFixed(2)
+        : "0.00";
+
+    setAccuracy(acc);
+  };
 
   const getKeyLane = (key) => {
     const k = key.toLowerCase();
@@ -163,8 +251,8 @@ export default function GameCanvas({
     const now = currentTimeRef.current;
     const maxWindow = 180;
 
-    for (let i = 0; i < notes.length; i++) {
-      const note = notes[i];
+    for (let i = 0; i < playerNotes.length; i++) {
+      const note = playerNotes[i];
       if (note.lane !== lane || hitNotesRef.current.has(i)) continue;
 
       const timeDiff = note.time - now;
@@ -173,7 +261,7 @@ export default function GameCanvas({
 
       const absDiff = Math.abs(timeDiff);
       const judgment = currentDiffConfig.judgments.find(
-        (j) => absDiff <= j.window
+        (j) => absDiff <= j.window,
       );
 
       if (judgment) {
@@ -189,9 +277,11 @@ export default function GameCanvas({
         } else {
           hitNotesRef.current.add(i);
         }
+
         scoreRef.current += judgment.score;
         setScore(scoreRef.current);
-        setLastRating(judgment);
+        setLastRating({ ...judgment, id: ++hitCountRef.current });
+        recordStats(judgment.weight, false);
         break;
       }
     }
@@ -227,45 +317,63 @@ export default function GameCanvas({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [notes, currentDiffConfig]);
+  }, [playerNotes, currentDiffConfig]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
 
-    const currentAudioUrl = songData?.audioUrl || "";
-    const audio = new Audio(currentAudioUrl);
+  const currentAudioUrl = songData?.audioUrl || "";
+  const audio = new Audio(currentAudioUrl);
 
-    audio.volume = Math.max(0, Math.min(1, optionsRef.current.bgmVolume));
-    audio.loop = false;
-    audioRef.current = audio;
+  audio.volume = Math.max(0, Math.min(1, optionsRef.current.bgmVolume));
+  audio.loop = false;
+  audioRef.current = audio;
 
-    let animationFrameId;
-    const startTime = Date.now();
+  let animationFrameId;
+  const startTime = Date.now();
+  let playPromise = null;
 
-    const handleAudioEnd = () => {
-      if (!hasExitedRef.current) {
-        hasExitedRef.current = true;
-        if (callbacksRef.current.onComplete) {
-          callbacksRef.current.onComplete(scoreRef.current);
-        } else if (callbacksRef.current.onExit) {
-          callbacksRef.current.onExit(scoreRef.current);
-        }
+  const handleAudioEnd = () => {
+    if (!hasExitedRef.current) {
+      hasExitedRef.current = true;
+      if (callbacksRef.current.onComplete) {
+        callbacksRef.current.onComplete(scoreRef.current);
+      } else if (callbacksRef.current.onExit) {
+        callbacksRef.current.onExit(scoreRef.current);
       }
-    };
+    }
+  };
 
-    audio.addEventListener("ended", handleAudioEnd);
-    audio.play().catch((error) => {
-      console.error("Erro ao tocar áudio:", error);
+  audio.addEventListener("ended", handleAudioEnd);
+
+  // Inicia o áudio tratando o bloqueio do navegador e o cancelamento do Strict Mode
+  playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch((error) => {
+      // Ignora erro de interrupção causado por re-renders rápidos do React
+      if (error.name === "AbortError") return;
+      console.warn("Áudio aguardando interação do usuário para iniciar.");
     });
+  }
 
-    const targetY = isDownscroll ? TARGET_Y_DOWNSCROLL : TARGET_Y_UPSCROLL;
-    const maxMissWindow =
-      currentDiffConfig.judgments[currentDiffConfig.judgments.length - 1]
-        .window;
+  // Tentar destravar o áudio na primeira tecla pressionada se a política de Autoplay bloquear
+  const handleFirstInteraction = () => {
+    if (audio.paused && audio.readyState >= 2) {
+      audio.play().catch(() => {});
+    }
+    window.removeEventListener("keydown", handleFirstInteraction);
+    window.removeEventListener("click", handleFirstInteraction);
+  };
+  window.addEventListener("keydown", handleFirstInteraction);
+  window.addEventListener("click", handleFirstInteraction);
 
-    const render = () => {
+  const targetY = isDownscroll ? TARGET_Y_DOWNSCROLL : TARGET_Y_UPSCROLL;
+  const maxMissWindow =
+    currentDiffConfig.judgments[currentDiffConfig.judgments.length - 1].window;
+
+  const render = () => {
       const isAudioPlaying =
         audioRef.current &&
         !audioRef.current.paused &&
@@ -289,7 +397,6 @@ export default function GameCanvas({
 
       currentTimeRef.current = effectiveChartTime;
 
-      // 1. Renderização do Fundo Global
       if (bgImageRef.current) {
         ctx.drawImage(bgImageRef.current, 0, 0, canvas.width, canvas.height);
       } else {
@@ -297,32 +404,26 @@ export default function GameCanvas({
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Desenhar Strums (Cinza com Borda Colorida)
       const drawStrums = (laneOffsets, activeMap) => {
         laneOffsets.forEach((x, lane) => {
           const isPressed = activeMap[lane];
-
-          ctx.save();
-          ctx.strokeStyle = LANE_COLORS[lane];
-          ctx.lineWidth = 4;
-          ctx.fillStyle = isPressed
-            ? LANE_COLORS[lane]
-            : "rgba(45, 45, 55, 0.75)";
-
-          ctx.beginPath();
-          ctx.roundRect(x, targetY, NOTE_SIZE, NOTE_SIZE, 8);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
+          drawArrow(
+            ctx,
+            x,
+            targetY,
+            NOTE_SIZE,
+            lane,
+            LANE_COLORS[lane],
+            isPressed,
+          );
         });
       };
 
-      // 2. Renderização dos Strums
       drawStrums(PLAYER_LANE_X, activeKeysRef.current);
       drawStrums(OPPONENT_LANE_X, opponentActiveKeysRef.current);
 
-      // 3. BOTPLAY (OPPONENT)
-      notes.forEach((note, index) => {
+      // Botplay Oponente
+      opponentNotes.forEach((note, index) => {
         if (
           note.time <= effectiveChartTime &&
           !opponentHitNotesRef.current.has(index)
@@ -360,7 +461,7 @@ export default function GameCanvas({
         }
       });
 
-      // 4. Validação de Hold Notes do Player
+      // Holds do Player
       PLAYER_LANE_X.forEach((_, lane) => {
         const activeHold = activeHoldsRef.current.get(lane);
         if (activeHold) {
@@ -368,7 +469,12 @@ export default function GameCanvas({
           if (!isKeyDown && effectiveChartTime < activeHold.endTime - 50) {
             hitNotesRef.current.add(activeHold.index);
             activeHoldsRef.current.delete(lane);
-            setLastRating({ name: "MISS", color: "#F9393F" });
+            setLastRating({
+              name: "MISS",
+              color: "#F9393F",
+              id: ++hitCountRef.current,
+            });
+            recordStats(0, true);
           } else if (effectiveChartTime >= activeHold.endTime) {
             hitNotesRef.current.add(activeHold.index);
             activeHoldsRef.current.delete(lane);
@@ -376,9 +482,14 @@ export default function GameCanvas({
         }
       });
 
-      // 5. Renderização das Notas e Caudas
-      const renderNotesForSide = (laneOffsets, hitSet, activeHoldsMap) => {
-        notes.forEach((note, index) => {
+      const renderNotesForSide = (
+        notesList,
+        laneOffsets,
+        hitSet,
+        activeHoldsMap,
+        isPlayerSide,
+      ) => {
+        notesList.forEach((note, index) => {
           const activeHold = activeHoldsMap.get(note.lane);
           const isBeingHeld = activeHold && activeHold.index === index;
 
@@ -387,12 +498,18 @@ export default function GameCanvas({
           const timeDiff = note.time - effectiveChartTime;
 
           if (
-            hitSet === hitNotesRef.current &&
+            isPlayerSide &&
             timeDiff < -maxMissWindow &&
             !isBeingHeld &&
             !hitSet.has(index)
           ) {
             hitSet.add(index);
+            setLastRating({
+              name: "MISS",
+              color: "#F9393F",
+              id: ++hitCountRef.current,
+            });
+            recordStats(0, true);
             return;
           }
 
@@ -410,7 +527,7 @@ export default function GameCanvas({
               if (isBeingHeld) {
                 const remainingTime = Math.max(
                   0,
-                  holdEndTime - effectiveChartTime
+                  holdEndTime - effectiveChartTime,
                 );
                 tailTop = targetY + NOTE_SIZE / 2;
                 tailHeight = remainingTime * scrollSpeed;
@@ -427,7 +544,7 @@ export default function GameCanvas({
               if (isBeingHeld) {
                 const remainingTime = Math.max(
                   0,
-                  holdEndTime - effectiveChartTime
+                  holdEndTime - effectiveChartTime,
                 );
                 tailHeight = remainingTime * scrollSpeed;
                 tailTop = targetY + NOTE_SIZE / 2 - tailHeight;
@@ -460,74 +577,118 @@ export default function GameCanvas({
             noteY >= -NOTE_SIZE &&
             noteY <= canvas.height + NOTE_SIZE
           ) {
-            ctx.save();
-            ctx.fillStyle = LANE_COLORS[note.lane];
-            ctx.beginPath();
-            ctx.roundRect(x, noteY, NOTE_SIZE, NOTE_SIZE, 6);
-            ctx.fill();
-            ctx.restore();
+            drawArrow(
+              ctx,
+              x,
+              noteY,
+              NOTE_SIZE,
+              note.lane,
+              LANE_COLORS[note.lane],
+              true,
+            );
           }
         });
       };
 
       renderNotesForSide(
+        playerNotes,
         PLAYER_LANE_X,
         hitNotesRef.current,
-        activeHoldsRef.current
+        activeHoldsRef.current,
+        true,
       );
+
       renderNotesForSide(
+        opponentNotes,
         OPPONENT_LANE_X,
         opponentHitNotesRef.current,
-        opponentActiveHoldsRef.current
+        opponentActiveHoldsRef.current,
+        false,
       );
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+  render();
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      if (audioRef.current) {
-        audioRef.current.removeEventListener("ended", handleAudioEnd);
-        audioRef.current.pause();
-        audioRef.current = null;
+  return () => {
+    cancelAnimationFrame(animationFrameId);
+    window.removeEventListener("keydown", handleFirstInteraction);
+    window.removeEventListener("click", handleFirstInteraction);
+
+    if (audioRef.current) {
+      audioRef.current.removeEventListener("ended", handleAudioEnd);
+
+      // Espera a Promise de play() resolver antes de executar pause()
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            audio.pause();
+          })
+          .catch(() => {});
+      } else {
+        audio.pause();
       }
-    };
-  }, [
-    songData?.audioUrl,
-    isDownscroll,
-    scrollSpeed,
-    chartLoopDuration,
-    notes,
-    currentDiffConfig,
-  ]);
+      audioRef.current = null;
+    }
+  };
+}, [
+  songData?.audioUrl,
+  isDownscroll,
+  scrollSpeed,
+  chartLoopDuration,
+  playerNotes,
+  opponentNotes,
+  currentDiffConfig,
+]);
 
   return (
-    <div className="game-canvas-container">
-      <canvas
-        ref={canvasRef}
-        width={1280}
-        height={720}
-        className="game-canvas"
-      />
-      <div className="game-ui-overlay">
-        <div className="song-info">
-          <h2>{songData?.title || songData?.name || "Test Track"}</h2>
-          <span className="difficulty-badge">{diffKey}</span> <br />
-          <span className="score-display">SCORE: {score}</span>
-        </div>
+    <div className="game-wrapper">
+      <div className="game-canvas-container">
+        <canvas
+          ref={canvasRef}
+          width={1280}
+          height={720}
+          className="game-canvas"
+        />
 
-        {lastRating && (
-          <div className="rating-popup" style={{ color: lastRating.color }}>
-            {lastRating.name}
+        <div className="game-ui-overlay">
+          <div
+            className={`fnf-hud-container ${
+              isDownscroll ? "position-top" : "position-bottom"
+            }`}
+          >
+            <div className="fnf-song-bar">
+              <span className="fnf-song-title">
+                {songData?.title || songData?.name || "Test Track"} - [{diffKey}
+                ]
+              </span>
+            </div>
+
+            <div className="fnf-stats-text">
+              <span>Score: {score}</span>
+              <span className="fnf-divider">|</span>
+              <span>Misses: {misses}</span>
+              <span className="fnf-divider">|</span>
+              <span>Rating: {accuracy}%</span>
+            </div>
           </div>
-        )}
 
-        <p className="exit-hint">
-          Controles: <strong>{keybinds}</strong> | <strong>ESC</strong> para
-          sair
-        </p>
+          {lastRating && (
+            <div
+              key={lastRating.id}
+              className="rating-popup"
+              style={{ color: lastRating.color }}
+            >
+              {lastRating.name}
+            </div>
+          )}
+
+          <p className="exit-hint">
+            Controles: <strong>{keybinds}</strong> | <strong>ESC</strong> para
+            sair
+          </p>
+        </div>
       </div>
     </div>
   );
