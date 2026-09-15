@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import "./GameCanvas.css";
 
 const DIFFICULTY_CONFIG = {
@@ -74,16 +74,71 @@ const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
   ctx.restore();
 };
 
-// Auxiliar seguro para extrair notas independente da estrutura do JSON
-// Auxiliar imune a valores nulos
-const parseNotesArray = (rawChart) => {
+// Parser completo: extrai, converte unidades, lida com mustHitSection e ordena cronologicamente
+const parseNotesArray = (rawChart, targetSide = "player") => {
   if (!rawChart) return [];
-  if (Array.isArray(rawChart)) return rawChart;
-  if (Array.isArray(rawChart?.notes)) return rawChart.notes;
-  if (Array.isArray(rawChart?.playerNotes)) return rawChart.playerNotes;
-  if (Array.isArray(rawChart?.opponentNotes)) return rawChart.opponentNotes;
-  if (Array.isArray(rawChart?.song?.notes)) return rawChart.song.notes;
-  return [];
+
+  let extracted = [];
+
+  // Formato FNF / Psych Engine (Array de seções com sectionNotes)
+  if (rawChart?.song?.notes && Array.isArray(rawChart.song.notes)) {
+    rawChart.song.notes.forEach((section) => {
+      const mustHit = section?.mustHitSection ?? true;
+      const sectionNotes = section?.sectionNotes || [];
+
+      sectionNotes.forEach((n) => {
+        if (!Array.isArray(n) || n.length < 2) return;
+
+        const rawTime = n[0];
+        const rawLane = n[1];
+        const duration = n[2] || 0;
+
+        let isPlayerNote = false;
+        if (rawLane >= 0 && rawLane <= 3) {
+          isPlayerNote = mustHit;
+        } else if (rawLane >= 4 && rawLane <= 7) {
+          isPlayerNote = !mustHit;
+        }
+
+        if (
+          (targetSide === "player" && isPlayerNote) ||
+          (targetSide === "opponent" && !isPlayerNote)
+        ) {
+          extracted.push({
+            time: rawTime < 100 ? rawTime * 1000 : rawTime,
+            lane: rawLane % 4,
+            duration: duration,
+            type: duration > 0 ? "hold" : "note",
+          });
+        }
+      });
+    });
+  } else {
+    // Formatos planos ou simplificados
+    const rawList = Array.isArray(rawChart)
+      ? rawChart
+      : rawChart?.notes ||
+        rawChart?.playerNotes ||
+        rawChart?.opponentNotes ||
+        [];
+
+    extracted = rawList.map((n) => {
+      const rawTime = n.time ?? n[0] ?? 0;
+      const rawLane = n.lane ?? n[1] ?? 0;
+      const duration = n.duration ?? n[2] ?? 0;
+
+      return {
+        ...n,
+        time: rawTime < 100 ? rawTime * 1000 : rawTime,
+        lane: rawLane % 4,
+        duration: duration,
+        type: n.type || (duration > 0 ? "hold" : "note"),
+      };
+    });
+  }
+
+  // Ordenação cronológica fundamental para a busca do checkHit
+  return extracted.sort((a, b) => a.time - b.time);
 };
 
 export default function GameCanvas({
@@ -145,10 +200,15 @@ export default function GameCanvas({
   const currentDiffConfig =
     DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.NORMAL;
 
-  // Extração flexível e imune a estruturas variadas
-  // Substitua o trecho antigo de notas por este:
-  const playerNotes = parseNotesArray(songData?.playerChart);
-  const opponentNotes = parseNotesArray(songData?.opponentChart);
+  // Memoização impede recriação indevida dos arrays e reinício do áudio
+  const playerNotes = useMemo(
+    () => parseNotesArray(songData?.playerChart || songData, "player"),
+    [songData]
+  );
+  const opponentNotes = useMemo(
+    () => parseNotesArray(songData?.opponentChart || songData, "opponent"),
+    [songData]
+  );
 
   const playerNotesRef = useRef(playerNotes);
   useEffect(() => {
@@ -251,7 +311,7 @@ export default function GameCanvas({
 
       const absDiff = Math.abs(timeDiff);
       const judgment = currentDiffConfig.judgments.find(
-        (j) => absDiff <= j.window,
+        (j) => absDiff <= j.window
       );
 
       if (judgment) {
@@ -368,7 +428,6 @@ export default function GameCanvas({
         audioRef.current.currentTime > 0;
       const offsetMs = optionsRef.current.audioOffset || 0;
 
-      // Tempo linear contínuo (sem reset de módulo %)
       const realTime = isAudioPlaying
         ? audioRef.current.currentTime * 1000 + offsetMs
         : Date.now() - startTime + offsetMs;
@@ -391,7 +450,7 @@ export default function GameCanvas({
             NOTE_SIZE,
             lane,
             LANE_COLORS[lane],
-            activeMap[lane],
+            activeMap[lane]
           );
         });
       };
@@ -461,7 +520,7 @@ export default function GameCanvas({
         laneOffsets,
         hitSet,
         activeHoldsMap,
-        isPlayerSide,
+        isPlayerSide
       ) => {
         notesList.forEach((note, index) => {
           const activeHold = activeHoldsMap.get(note.lane);
@@ -552,7 +611,7 @@ export default function GameCanvas({
               NOTE_SIZE,
               note.lane,
               LANE_COLORS[note.lane],
-              true,
+              true
             );
           }
         });
@@ -563,14 +622,14 @@ export default function GameCanvas({
         PLAYER_LANE_X,
         hitNotesRef.current,
         activeHoldsRef.current,
-        true,
+        true
       );
       renderNotesForSide(
         opponentNotes,
         OPPONENT_LANE_X,
         opponentHitNotesRef.current,
         opponentActiveHoldsRef.current,
-        false,
+        false
       );
 
       animationFrameId = requestAnimationFrame(render);
@@ -614,12 +673,13 @@ export default function GameCanvas({
 
         <div className="game-ui-overlay">
           <div
-            className={`fnf-hud-container ${isDownscroll ? "position-top" : "position-bottom"}`}
+            className={`fnf-hud-container ${
+              isDownscroll ? "position-top" : "position-bottom"
+            }`}
           >
             <div className="fnf-song-bar">
               <span className="fnf-song-title">
-                {songData?.title || songData?.name || "Test Track"} - [{diffKey}
-                ]
+                {songData?.title || songData?.name || "Test Track"} - [{diffKey}]
               </span>
             </div>
 
