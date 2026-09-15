@@ -39,6 +39,60 @@
   user-select: none;
 }
 
+/* Overlay de Contagem Regressiva */
+.fnf-countdown-overlay {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 80px;
+  font-weight: 900;
+  text-shadow:
+    4px 4px 0 #000,
+    -3px -3px 0 #000,
+    3px -3px 0 #000,
+    -3px 3px 0 #000;
+  animation: countdownPulse 0.5s ease-out forwards;
+  z-index: 10;
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.9;
+  }
+}
+
+/* Overlay de Game Over */
+.fnf-gameover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+}
+
+.fnf-gameover-title {
+  color: #ff3333;
+  font-size: 72px;
+  font-weight: 900;
+  margin: 0;
+  text-shadow: 4px 4px 0 #000;
+}
+
+.fnf-gameover-sub {
+  color: #ffffff;
+  font-size: 20px;
+  margin-top: 15px;
+}
+
 /* HUD Principal */
 .fnf-hud-container {
   position: absolute;
@@ -47,39 +101,57 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
 }
 
 .fnf-hud-container.position-bottom {
-  bottom: 25px;
+  bottom: 15px;
 }
 
 .fnf-hud-container.position-top {
-  top: 25px;
-}
-
-.fnf-song-bar {
-  background: rgba(0, 0, 0, 0.65);
-  padding: 6px 16px;
-  border-radius: 4px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  top: 15px;
 }
 
 .fnf-song-title {
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #000;
+  margin-bottom: 2px;
+}
+
+/* Barra de Vida */
+.fnf-health-bar-container {
+  width: 400px;
+  height: 18px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 3px solid #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+.fnf-health-bar-fill {
+  height: 100%;
+  transition:
+    width 0.15s ease-out,
+    background-color 0.2s ease;
 }
 
 .fnf-stats-text {
   color: #ffffff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
-  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  text-shadow:
+    2px 2px 0 #000,
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000;
   display: flex;
   gap: 10px;
+  margin-top: 4px;
 }
 
 .fnf-divider {
@@ -94,7 +166,11 @@
   transform: translate(-50%, -50%);
   font-size: 48px;
   font-weight: 900;
-  text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+  text-shadow:
+    3px 3px 0 #000,
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000;
   animation: popupFade 0.4s ease-out forwards;
 }
 

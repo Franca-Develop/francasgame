@@ -1,6 +1,7 @@
 // Gerenciador global de Áudio (SFX + BGM) via Web Audio API
 let audioCtx = null;
 const sfxBuffers = {};
+let activeSfxSources = []; // Guarda os efeitos de som tocando no momento
 
 // Variáveis de controle para a Música (BGM)
 let musicBuffer = null;
@@ -51,6 +52,19 @@ export function playSfx(name, volume = 1, rate = 1) {
   gainNode.connect(ctx.destination);
 
   source.start(0);
+
+  activeSfxSources.push(source);
+}
+
+export function stopAllSfx() {
+  activeSfxSources.forEach((source) => {
+    try {
+      source.stop();
+    } catch (err) {
+      // Ignora caso o áudio já tenha parado
+    }
+  });
+  activeSfxSources = [];
 }
 
 // ==================== ÁREA DE MÚSICA (BGM Gameplay) ====================

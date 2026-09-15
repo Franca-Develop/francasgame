@@ -13,6 +13,7 @@ import scrollSfxAudio from "./assets/audio/sfx/scroll-sfx.mp3";
 import selectSfxAudio from "./assets/audio/sfx/select-sfx.mp3";
 import cancelSfxAudio from "./assets/audio/sfx/cancel-sfx.mp3";
 import yeahSfxAudio from "./assets/audio/sfx/yeah-sfx.mp3";
+import countdownSfxAudio from "./assets/audio/sfx/countdown-sfx.mp3";
 
 import { loadSfx } from "./utils/useAudio";
 import { saveHighScore, saveWeekHighScore } from "./utils/highScoreUtils";
@@ -91,6 +92,7 @@ export default function App() {
     loadSfx("select", selectSfxAudio);
     loadSfx("cancel", cancelSfxAudio);
     loadSfx("yeah", yeahSfxAudio);
+    loadSfx("countdown", countdownSfxAudio);
   }, []);
 
   // Web Audio API para o BGM do Menu

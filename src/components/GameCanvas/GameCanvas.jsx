@@ -1,32 +1,117 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import { playSfx, stopAllSfx } from "../../utils/useAudio";
 import "./GameCanvas.css";
 
 const DIFFICULTY_CONFIG = {
   EASY: {
     speedMultiplier: 0.8,
     judgments: [
-      { name: "SICK", window: 50, score: 350, weight: 1.0, color: "#00FFFF" },
-      { name: "GOOD", window: 100, score: 200, weight: 0.75, color: "#4CAF50" },
-      { name: "BAD", window: 150, score: 100, weight: 0.5, color: "#FF9800" },
-      { name: "SHIT", window: 180, score: 50, weight: 0.25, color: "#F44336" },
+      {
+        name: "SICK",
+        window: 50,
+        score: 350,
+        weight: 1.0,
+        color: "#00FFFF",
+        healthDelta: 4,
+      },
+      {
+        name: "GOOD",
+        window: 100,
+        score: 200,
+        weight: 0.75,
+        color: "#4CAF50",
+        healthDelta: 2,
+      },
+      {
+        name: "BAD",
+        window: 150,
+        score: 100,
+        weight: 0.5,
+        color: "#FF9800",
+        healthDelta: 0.5,
+      },
+      {
+        name: "SHIT",
+        window: 180,
+        score: 50,
+        weight: 0.25,
+        color: "#F44336",
+        healthDelta: -4,
+      },
     ],
   },
   NORMAL: {
     speedMultiplier: 1.0,
     judgments: [
-      { name: "SICK", window: 45, score: 350, weight: 1.0, color: "#00FFFF" },
-      { name: "GOOD", window: 90, score: 200, weight: 0.75, color: "#4CAF50" },
-      { name: "BAD", window: 135, score: 100, weight: 0.5, color: "#FF9800" },
-      { name: "SHIT", window: 160, score: 50, weight: 0.25, color: "#F44336" },
+      {
+        name: "SICK",
+        window: 45,
+        score: 350,
+        weight: 1.0,
+        color: "#00FFFF",
+        healthDelta: 4,
+      },
+      {
+        name: "GOOD",
+        window: 90,
+        score: 200,
+        weight: 0.75,
+        color: "#4CAF50",
+        healthDelta: 2,
+      },
+      {
+        name: "BAD",
+        window: 135,
+        score: 100,
+        weight: 0.5,
+        color: "#FF9800",
+        healthDelta: 0.5,
+      },
+      {
+        name: "SHIT",
+        window: 160,
+        score: 50,
+        weight: 0.25,
+        color: "#F44336",
+        healthDelta: -4,
+      },
     ],
   },
   HARD: {
     speedMultiplier: 1.25,
     judgments: [
-      { name: "SICK", window: 35, score: 350, weight: 1.0, color: "#00FFFF" },
-      { name: "GOOD", window: 75, score: 200, weight: 0.75, color: "#4CAF50" },
-      { name: "BAD", window: 110, score: 100, weight: 0.5, color: "#FF9800" },
-      { name: "SHIT", window: 130, score: 50, weight: 0.25, color: "#F44336" },
+      {
+        name: "SICK",
+        window: 35,
+        score: 350,
+        weight: 1.0,
+        color: "#00FFFF",
+        healthDelta: 4,
+      },
+      {
+        name: "GOOD",
+        window: 75,
+        score: 200,
+        weight: 0.75,
+        color: "#4CAF50",
+        healthDelta: 2,
+      },
+      {
+        name: "BAD",
+        window: 110,
+        score: 100,
+        weight: 0.5,
+        color: "#FF9800",
+        healthDelta: 0.5,
+      },
+      {
+        name: "SHIT",
+        window: 130,
+        score: 50,
+        weight: 0.25,
+        color: "#F44336",
+        healthDelta: -4,
+      },
     ],
   },
 };
@@ -74,15 +159,21 @@ const drawArrow = (ctx, x, y, size, lane, color, isPressed = false) => {
   ctx.restore();
 };
 
-// Parser completo: extrai, converte unidades, lida com mustHitSection e ordena cronologicamente
 const parseNotesArray = (rawChart, targetSide = "player") => {
   if (!rawChart) return [];
 
   let extracted = [];
+  const root = rawChart.song || rawChart.playerChart || rawChart;
+  const notesData =
+    root.notes || root.playerNotes || root.opponentNotes || root;
 
-  // Formato FNF / Psych Engine (Array de seções com sectionNotes)
-  if (rawChart?.song?.notes && Array.isArray(rawChart.song.notes)) {
-    rawChart.song.notes.forEach((section) => {
+  if (!Array.isArray(notesData)) return [];
+
+  const isFnfSectionFormat =
+    notesData.length > 0 && Array.isArray(notesData[0]?.sectionNotes);
+
+  if (isFnfSectionFormat) {
+    notesData.forEach((section) => {
       const mustHit = section?.mustHitSection ?? true;
       const sectionNotes = section?.sectionNotes || [];
 
@@ -93,12 +184,7 @@ const parseNotesArray = (rawChart, targetSide = "player") => {
         const rawLane = n[1];
         const duration = n[2] || 0;
 
-        let isPlayerNote = false;
-        if (rawLane >= 0 && rawLane <= 3) {
-          isPlayerNote = mustHit;
-        } else if (rawLane >= 4 && rawLane <= 7) {
-          isPlayerNote = !mustHit;
-        }
+        let isPlayerNote = rawLane >= 0 && rawLane <= 3 ? mustHit : !mustHit;
 
         if (
           (targetSide === "player" && isPlayerNote) ||
@@ -114,30 +200,23 @@ const parseNotesArray = (rawChart, targetSide = "player") => {
       });
     });
   } else {
-    // Formatos planos ou simplificados
-    const rawList = Array.isArray(rawChart)
-      ? rawChart
-      : rawChart?.notes ||
-        rawChart?.playerNotes ||
-        rawChart?.opponentNotes ||
-        [];
+    notesData.forEach((n) => {
+      if (!n) return;
 
-    extracted = rawList.map((n) => {
       const rawTime = n.time ?? n[0] ?? 0;
       const rawLane = n.lane ?? n[1] ?? 0;
       const duration = n.duration ?? n[2] ?? 0;
+      const type = n.type || (duration > 0 ? "hold" : "note");
 
-      return {
-        ...n,
+      extracted.push({
         time: rawTime < 100 ? rawTime * 1000 : rawTime,
         lane: rawLane % 4,
         duration: duration,
-        type: n.type || (duration > 0 ? "hold" : "note"),
-      };
+        type: type,
+      });
     });
   }
 
-  // Ordenação cronológica fundamental para a busca do checkHit
   return extracted.sort((a, b) => a.time - b.time);
 };
 
@@ -155,6 +234,15 @@ export default function GameCanvas({
 }) {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
+
+  // Função utilitária para cortar QUALQUER som imediatamente
+  const stopAllAudio = () => {
+    stopAllSfx();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
 
   const callbacksRef = useRef({});
   callbacksRef.current = { onExit, onComplete, onPlayerHit, onOpponentHit };
@@ -178,10 +266,22 @@ export default function GameCanvas({
 
   const hitCountRef = useRef(0);
 
+  // Estados
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
   const [accuracy, setAccuracy] = useState("0.00");
   const [lastRating, setLastRating] = useState(null);
+
+  // Sistema de Vida & Game Over
+  const [health, setHealth] = useState(50);
+  const healthRef = useRef(50);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const isGameOverRef = useRef(false);
+
+  // Contagem Regressiva & Bloqueio de Teclas
+  const [countdownStep, setCountdownStep] = useState(null);
+  const isCountingDownRef = useRef(true);
+  const gameStartTimeRef = useRef(0);
 
   const scoreRef = useRef(0);
   const missesRef = useRef(0);
@@ -200,14 +300,13 @@ export default function GameCanvas({
   const currentDiffConfig =
     DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.NORMAL;
 
-  // Memoização impede recriação indevida dos arrays e reinício do áudio
   const playerNotes = useMemo(
     () => parseNotesArray(songData?.playerChart || songData, "player"),
-    [songData]
+    [songData],
   );
   const opponentNotes = useMemo(
     () => parseNotesArray(songData?.opponentChart || songData, "opponent"),
-    [songData]
+    [songData],
   );
 
   const playerNotesRef = useRef(playerNotes);
@@ -236,6 +335,7 @@ export default function GameCanvas({
     }
   }, [songData]);
 
+  // Sequência e Inicialização da Fase
   useEffect(() => {
     hitNotesRef.current.clear();
     opponentHitNotesRef.current.clear();
@@ -246,16 +346,79 @@ export default function GameCanvas({
     totalHitWeightRef.current = 0;
     totalNotesPlayedRef.current = 0;
 
+    healthRef.current = 50;
+    isGameOverRef.current = false;
+    isCountingDownRef.current = true;
+
+    setHealth(50);
+    setIsGameOver(false);
     setScore(0);
     setMisses(0);
     setAccuracy("0.00");
     setLastRating(null);
+
+    const countdownSteps = [
+      { text: "THREE", color: "#FF3333" },
+      { text: "TWO", color: "#FF9900" },
+      { text: "ONE", color: "#FFD700" },
+      { text: "GO!", color: "#00FF66" },
+    ];
+
+    let currentStepIndex = 0;
+    const sfxVolume = optionsRef.current.bgmVolume ?? 1;
+
+    setCountdownStep(countdownSteps[0]);
+    playSfx("countdown", sfxVolume);
+
+    const interval = setInterval(() => {
+      currentStepIndex += 1;
+      if (currentStepIndex < countdownSteps.length) {
+        setCountdownStep(countdownSteps[currentStepIndex]);
+
+        // No passo "GO!", descongela o jogo e inicia a música
+        if (countdownSteps[currentStepIndex].text === "GO!") {
+          isCountingDownRef.current = false;
+          gameStartTimeRef.current = Date.now();
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current
+              .play()
+              .catch((err) => console.error("Erro ao iniciar áudio:", err));
+          }
+        }
+      } else {
+        clearInterval(interval);
+        setCountdownStep(null);
+      }
+    }, 400);
+
+    return () => {
+      clearInterval(interval);
+      stopAllSfx(); // Garante que a contagem para se desmontar a tela
+    };
   }, [songData]);
+
+  const updateHealth = (delta) => {
+    if (isGameOverRef.current) return;
+
+    healthRef.current = Math.max(0, Math.min(100, healthRef.current + delta));
+    setHealth(healthRef.current);
+
+    if (healthRef.current <= 0) {
+      isGameOverRef.current = true;
+      setIsGameOver(true);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    }
+  };
 
   const recordStats = (weight = 0, isMiss = false) => {
     if (isMiss) {
       missesRef.current += 1;
       setMisses(missesRef.current);
+      updateHealth(-8);
     } else {
       totalHitWeightRef.current += weight;
     }
@@ -297,6 +460,8 @@ export default function GameCanvas({
   };
 
   const checkHit = (lane) => {
+    if (isCountingDownRef.current || isGameOverRef.current) return;
+
     const now = currentTimeRef.current;
     const maxWindow = 180;
     const currentNotes = playerNotesRef.current;
@@ -311,7 +476,7 @@ export default function GameCanvas({
 
       const absDiff = Math.abs(timeDiff);
       const judgment = currentDiffConfig.judgments.find(
-        (j) => absDiff <= j.window
+        (j) => absDiff <= j.window,
       );
 
       if (judgment) {
@@ -331,6 +496,7 @@ export default function GameCanvas({
         scoreRef.current += judgment.score;
         setScore(scoreRef.current);
         setLastRating({ ...judgment, id: ++hitCountRef.current });
+        updateHealth(judgment.healthDelta);
         recordStats(judgment.weight, false);
         break;
       }
@@ -340,12 +506,14 @@ export default function GameCanvas({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        if (audioRef.current) audioRef.current.pause();
+        stopAllAudio(); // 🛑 Para SFX e Música na hora
         if (callbacksRef.current.onExit) {
           callbacksRef.current.onExit(scoreRef.current);
         }
         return;
       }
+
+      if (isCountingDownRef.current || isGameOverRef.current) return;
 
       const lane = getKeyLane(e.key);
       if (lane !== -1) {
@@ -382,11 +550,9 @@ export default function GameCanvas({
     audioRef.current = audio;
 
     let animationFrameId;
-    const startTime = Date.now();
-    let playPromise = null;
 
     const handleAudioEnd = () => {
-      if (!hasExitedRef.current) {
+      if (!hasExitedRef.current && !isGameOverRef.current) {
         hasExitedRef.current = true;
         if (callbacksRef.current.onComplete) {
           callbacksRef.current.onComplete(scoreRef.current);
@@ -398,39 +564,28 @@ export default function GameCanvas({
 
     audio.addEventListener("ended", handleAudioEnd);
 
-    playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((error) => {
-        if (error.name === "AbortError") return;
-        console.warn("Áudio aguardando interação para iniciar.");
-      });
-    }
-
-    const handleFirstInteraction = () => {
-      if (audio.paused && audio.readyState >= 2) {
-        audio.play().catch(() => {});
-      }
-      window.removeEventListener("keydown", handleFirstInteraction);
-      window.removeEventListener("click", handleFirstInteraction);
-    };
-    window.addEventListener("keydown", handleFirstInteraction);
-    window.addEventListener("click", handleFirstInteraction);
-
     const targetY = isDownscroll ? TARGET_Y_DOWNSCROLL : TARGET_Y_UPSCROLL;
     const maxMissWindow =
       currentDiffConfig.judgments[currentDiffConfig.judgments.length - 1]
         .window;
 
     const render = () => {
-      const isAudioPlaying =
-        audioRef.current &&
-        !audioRef.current.paused &&
-        audioRef.current.currentTime > 0;
-      const offsetMs = optionsRef.current.audioOffset || 0;
+      if (isGameOverRef.current) return;
 
-      const realTime = isAudioPlaying
-        ? audioRef.current.currentTime * 1000 + offsetMs
-        : Date.now() - startTime + offsetMs;
+      let realTime = 0;
+
+      // Se estiver em contagem regressiva, o tempo fica congelado em 0
+      if (!isCountingDownRef.current) {
+        const isAudioPlaying =
+          audioRef.current &&
+          !audioRef.current.paused &&
+          audioRef.current.currentTime > 0;
+        const offsetMs = optionsRef.current.audioOffset || 0;
+
+        realTime = isAudioPlaying
+          ? audioRef.current.currentTime * 1000 + offsetMs
+          : Date.now() - gameStartTimeRef.current + offsetMs;
+      }
 
       currentTimeRef.current = realTime;
 
@@ -450,7 +605,7 @@ export default function GameCanvas({
             NOTE_SIZE,
             lane,
             LANE_COLORS[lane],
-            activeMap[lane]
+            activeMap[lane],
           );
         });
       };
@@ -458,69 +613,74 @@ export default function GameCanvas({
       drawStrums(PLAYER_LANE_X, activeKeysRef.current);
       drawStrums(OPPONENT_LANE_X, opponentActiveKeysRef.current);
 
-      // Botplay Oponente
-      opponentNotes.forEach((note, index) => {
-        if (note.time <= realTime && !opponentHitNotesRef.current.has(index)) {
-          opponentHitNotesRef.current.add(index);
-          opponentActiveKeysRef.current[note.lane] = true;
+      // Botplay Oponente (só processa se a partida tiver começado)
+      if (!isCountingDownRef.current) {
+        opponentNotes.forEach((note, index) => {
+          if (
+            note.time <= realTime &&
+            !opponentHitNotesRef.current.has(index)
+          ) {
+            opponentHitNotesRef.current.add(index);
+            opponentActiveKeysRef.current[note.lane] = true;
 
-          if (callbacksRef.current.onOpponentHit) {
-            callbacksRef.current.onOpponentHit(note.lane);
+            if (callbacksRef.current.onOpponentHit) {
+              callbacksRef.current.onOpponentHit(note.lane);
+            }
+
+            if (note.type === "hold" && note.duration) {
+              opponentActiveHoldsRef.current.set(note.lane, {
+                index,
+                endTime: note.time + note.duration,
+              });
+            } else {
+              opponentKeyTimersRef.current[note.lane] = Date.now() + 120;
+            }
           }
+        });
 
-          if (note.type === "hold" && note.duration) {
-            opponentActiveHoldsRef.current.set(note.lane, {
-              index,
-              endTime: note.time + note.duration,
-            });
-          } else {
-            opponentKeyTimersRef.current[note.lane] = Date.now() + 120;
-          }
-        }
-      });
-
-      const nowMs = Date.now();
-      [0, 1, 2, 3].forEach((lane) => {
-        const hold = opponentActiveHoldsRef.current.get(lane);
-        if (hold) {
-          if (realTime >= hold.endTime) {
-            opponentActiveHoldsRef.current.delete(lane);
+        const nowMs = Date.now();
+        [0, 1, 2, 3].forEach((lane) => {
+          const hold = opponentActiveHoldsRef.current.get(lane);
+          if (hold) {
+            if (realTime >= hold.endTime) {
+              opponentActiveHoldsRef.current.delete(lane);
+              opponentActiveKeysRef.current[lane] = false;
+            } else {
+              opponentActiveKeysRef.current[lane] = true;
+            }
+          } else if (nowMs > opponentKeyTimersRef.current[lane]) {
             opponentActiveKeysRef.current[lane] = false;
-          } else {
-            opponentActiveKeysRef.current[lane] = true;
           }
-        } else if (nowMs > opponentKeyTimersRef.current[lane]) {
-          opponentActiveKeysRef.current[lane] = false;
-        }
-      });
+        });
 
-      // Holds do Player
-      PLAYER_LANE_X.forEach((_, lane) => {
-        const activeHold = activeHoldsRef.current.get(lane);
-        if (activeHold) {
-          const isKeyDown = activeKeysRef.current[lane];
-          if (!isKeyDown && realTime < activeHold.endTime - 50) {
-            hitNotesRef.current.add(activeHold.index);
-            activeHoldsRef.current.delete(lane);
-            setLastRating({
-              name: "MISS",
-              color: "#F9393F",
-              id: ++hitCountRef.current,
-            });
-            recordStats(0, true);
-          } else if (realTime >= activeHold.endTime) {
-            hitNotesRef.current.add(activeHold.index);
-            activeHoldsRef.current.delete(lane);
+        // Holds do Player
+        PLAYER_LANE_X.forEach((_, lane) => {
+          const activeHold = activeHoldsRef.current.get(lane);
+          if (activeHold) {
+            const isKeyDown = activeKeysRef.current[lane];
+            if (!isKeyDown && realTime < activeHold.endTime - 50) {
+              hitNotesRef.current.add(activeHold.index);
+              activeHoldsRef.current.delete(lane);
+              setLastRating({
+                name: "MISS",
+                color: "#F9393F",
+                id: ++hitCountRef.current,
+              });
+              recordStats(0, true);
+            } else if (realTime >= activeHold.endTime) {
+              hitNotesRef.current.add(activeHold.index);
+              activeHoldsRef.current.delete(lane);
+            }
           }
-        }
-      });
+        });
+      }
 
       const renderNotesForSide = (
         notesList,
         laneOffsets,
         hitSet,
         activeHoldsMap,
-        isPlayerSide
+        isPlayerSide,
       ) => {
         notesList.forEach((note, index) => {
           const activeHold = activeHoldsMap.get(note.lane);
@@ -532,6 +692,7 @@ export default function GameCanvas({
 
           if (
             isPlayerSide &&
+            !isCountingDownRef.current &&
             timeDiff < -maxMissWindow &&
             !isBeingHeld &&
             !hitSet.has(index)
@@ -611,7 +772,7 @@ export default function GameCanvas({
               NOTE_SIZE,
               note.lane,
               LANE_COLORS[note.lane],
-              true
+              true,
             );
           }
         });
@@ -622,14 +783,14 @@ export default function GameCanvas({
         PLAYER_LANE_X,
         hitNotesRef.current,
         activeHoldsRef.current,
-        true
+        true,
       );
       renderNotesForSide(
         opponentNotes,
         OPPONENT_LANE_X,
         opponentHitNotesRef.current,
         opponentActiveHoldsRef.current,
-        false
+        false,
       );
 
       animationFrameId = requestAnimationFrame(render);
@@ -639,18 +800,11 @@ export default function GameCanvas({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("keydown", handleFirstInteraction);
-      window.removeEventListener("click", handleFirstInteraction);
-
       if (audioRef.current) {
         audioRef.current.removeEventListener("ended", handleAudioEnd);
-        if (playPromise !== undefined) {
-          playPromise.then(() => audio.pause()).catch(() => {});
-        } else {
-          audio.pause();
-        }
-        audioRef.current = null;
       }
+      stopAllAudio(); // 🛑 Garante encerramento total de áudio ao sair da página/componente
+      audioRef.current = null;
     };
   }, [
     songData?.audioUrl,
@@ -672,15 +826,48 @@ export default function GameCanvas({
         />
 
         <div className="game-ui-overlay">
+          {/* Overlay da Contagem Regressiva */}
+          {countdownStep && (
+            <div
+              className="fnf-countdown-overlay"
+              style={{ color: countdownStep.color }}
+            >
+              {countdownStep.text}
+            </div>
+          )}
+
+          {/* Overlay de Game Over */}
+          {isGameOver && (
+            <div className="fnf-gameover-overlay">
+              <h1 className="fnf-gameover-title">GAME OVER</h1>
+              <p className="fnf-gameover-sub">
+                Pressione <strong>ESC</strong> para sair
+              </p>
+            </div>
+          )}
+
+          {/* HUD Principal */}
           <div
-            className={`fnf-hud-container ${
-              isDownscroll ? "position-top" : "position-bottom"
-            }`}
+            className={`fnf-hud-container ${isDownscroll ? "position-top" : "position-bottom"}`}
           >
-            <div className="fnf-song-bar">
-              <span className="fnf-song-title">
-                {songData?.title || songData?.name || "Test Track"} - [{diffKey}]
-              </span>
+            <div className="fnf-song-title">
+              {songData?.title || songData?.name || "Test Track"} - [{diffKey}]
+            </div>
+
+            {/* Barra de Vida */}
+            <div className="fnf-health-bar-container">
+              <div
+                className="fnf-health-bar-fill"
+                style={{
+                  width: `${health}%`,
+                  backgroundColor:
+                    health > 50
+                      ? "#00FF66"
+                      : health > 20
+                        ? "#FFD700"
+                        : "#FF3333",
+                }}
+              />
             </div>
 
             <div className="fnf-stats-text">
