@@ -275,9 +275,14 @@ export default function GameCanvas({
   const [isGameOver, setIsGameOver] = useState(false);
   const isGameOverRef = useRef(false);
 
+  // CONTROLE DE PAUSA E CONTAGEM
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
+
   const [countdownStep, setCountdownStep] = useState(null);
   const isCountingDownRef = useRef(true);
   const gameStartTimeRef = useRef(0);
+  const countdownIntervalRef = useRef(null);
 
   const scoreRef = useRef(0);
   const missesRef = useRef(0);
@@ -310,15 +315,12 @@ export default function GameCanvas({
     playerNotesRef.current = playerNotes;
   }, [playerNotes]);
 
-  // CÁLCULOS DA VELOCIDADE
   const songRoot = songData?.song || songData?.playerChart || songData;
-
   const baseSpeed =
     songData?.speed ??
     songData?.playerChart?.speed ??
     songData?.song?.speed ??
     1.7;
-
   const bpm =
     songData?.bpm ?? songData?.playerChart?.bpm ?? songData?.song?.bpm ?? 120;
 
@@ -326,19 +328,40 @@ export default function GameCanvas({
   const diffMultiplier = currentDiffConfig.speedMultiplier;
   const scrollSpeed = baseSpeed * bpmMultiplier * diffMultiplier * 0.5;
 
-  // DEBUG CONSOLE: Exibe no DevTools os valores calculados
-  useEffect(() => {
-    console.log("🔍 [DEBUG CHART INFO]", {
-      rawSongData: songData,
-      songRootExtracted: songRoot,
-      songTitle: songRoot?.title || "Desconhecido",
-      bpm,
-      bpmMultiplier,
-      baseSpeed,
-      diffMultiplier,
-      finalScrollSpeed: scrollSpeed,
-    });
-  }, [songData, diffKey, scrollSpeed]);
+  // REUTILIZAÇÃO DA CONTAGEM REGRESSIVA
+  const runCountdownSequence = (onFinish) => {
+    if (countdownIntervalRef.current)
+      clearInterval(countdownIntervalRef.current);
+
+    const countdownSteps = [
+      { text: "THREE", color: "#FF3333" },
+      { text: "TWO", color: "#FF9900" },
+      { text: "ONE", color: "#FFD700" },
+      { text: "GO!", color: "#00FF66" },
+    ];
+
+    let currentStepIndex = 0;
+    const sfxVolume = optionsRef.current.bgmVolume ?? 1;
+
+    isCountingDownRef.current = true;
+    setCountdownStep(countdownSteps[0]);
+    playSfx("countdown", sfxVolume);
+
+    countdownIntervalRef.current = setInterval(() => {
+      currentStepIndex += 1;
+      if (currentStepIndex < countdownSteps.length) {
+        setCountdownStep(countdownSteps[currentStepIndex]);
+
+        if (countdownSteps[currentStepIndex].text === "GO!") {
+          isCountingDownRef.current = false;
+          if (onFinish) onFinish();
+        }
+      } else {
+        clearInterval(countdownIntervalRef.current);
+        setCountdownStep(null);
+      }
+    }, 400);
+  };
 
   useEffect(() => {
     if (songData?.bgUrl) {
@@ -364,10 +387,12 @@ export default function GameCanvas({
     missesRef.current = 0;
     totalHitWeightRef.current = 0;
     totalNotesPlayedRef.current = 0;
+    currentTimeRef.current = 0;
 
     healthRef.current = 50;
     isGameOverRef.current = false;
-    isCountingDownRef.current = true;
+    isPausedRef.current = false;
+    setIsPaused(false);
 
     setHealth(50);
     setIsGameOver(false);
@@ -376,43 +401,20 @@ export default function GameCanvas({
     setAccuracy("0.00");
     setLastRating(null);
 
-    const countdownSteps = [
-      { text: "THREE", color: "#FF3333" },
-      { text: "TWO", color: "#FF9900" },
-      { text: "ONE", color: "#FFD700" },
-      { text: "GO!", color: "#00FF66" },
-    ];
-
-    let currentStepIndex = 0;
-    const sfxVolume = optionsRef.current.bgmVolume ?? 1;
-
-    setCountdownStep(countdownSteps[0]);
-    playSfx("countdown", sfxVolume);
-
-    const interval = setInterval(() => {
-      currentStepIndex += 1;
-      if (currentStepIndex < countdownSteps.length) {
-        setCountdownStep(countdownSteps[currentStepIndex]);
-
-        if (countdownSteps[currentStepIndex].text === "GO!") {
-          isCountingDownRef.current = false;
-          gameStartTimeRef.current = Date.now();
-          if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current
-              .play()
-              .catch((err) => console.error("Erro ao iniciar áudio:", err));
-          }
-        }
-      } else {
-        clearInterval(interval);
-        setCountdownStep(null);
+    runCountdownSequence(() => {
+      gameStartTimeRef.current = Date.now();
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current
+          .play()
+          .catch((err) => console.error("Erro ao iniciar áudio:", err));
       }
-    }, 400);
+    });
 
     return () => {
-      clearInterval(interval);
-      stopAllSfx();
+      if (countdownIntervalRef.current)
+        clearInterval(countdownIntervalRef.current);
+      stopAllAudio();
     };
   }, [songData]);
 
@@ -478,7 +480,12 @@ export default function GameCanvas({
   };
 
   const checkHit = (lane) => {
-    if (isCountingDownRef.current || isGameOverRef.current) return;
+    if (
+      isCountingDownRef.current ||
+      isGameOverRef.current ||
+      isPausedRef.current
+    )
+      return;
 
     const now = currentTimeRef.current;
     const maxWindow = 180;
@@ -521,17 +528,63 @@ export default function GameCanvas({
     }
   };
 
+  // GERENCIADOR DE TECLAS (ESC E ENTER)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // ESCAPE: PAUSAR OU SAIR
       if (e.key === "Escape") {
-        stopAllAudio();
-        if (callbacksRef.current.onExit) {
-          callbacksRef.current.onExit(scoreRef.current);
+        if (isGameOverRef.current) {
+          stopAllAudio();
+          if (callbacksRef.current.onExit)
+            callbacksRef.current.onExit(scoreRef.current);
+          return;
+        }
+
+        if (isPausedRef.current) {
+          // ESC 2: SAIR DO JOGO
+          stopAllAudio();
+          if (callbacksRef.current.onExit)
+            callbacksRef.current.onExit(scoreRef.current);
+        } else {
+          // ESC 1: PARAR TOTALMENTE O JOGO E LIMPAR INTERVALOS
+          if (countdownIntervalRef.current)
+            clearInterval(countdownIntervalRef.current);
+          setCountdownStep(null);
+
+          isPausedRef.current = true;
+          setIsPaused(true);
+          activeKeysRef.current = { 0: false, 1: false, 2: false, 3: false };
+
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
         }
         return;
       }
 
-      if (isCountingDownRef.current || isGameOverRef.current) return;
+      // ENTER: REPAUSAR E RODAR A CONTAGEM
+      if (e.key === "Enter" && isPausedRef.current) {
+        isPausedRef.current = false;
+        setIsPaused(false);
+
+        runCountdownSequence(() => {
+          if (audioRef.current) {
+            gameStartTimeRef.current =
+              Date.now() - audioRef.current.currentTime * 1000;
+            audioRef.current
+              .play()
+              .catch((err) => console.error("Erro ao retomar áudio:", err));
+          }
+        });
+        return;
+      }
+
+      if (
+        isCountingDownRef.current ||
+        isGameOverRef.current ||
+        isPausedRef.current
+      )
+        return;
 
       const lane = getKeyLane(e.key);
       if (lane !== -1) {
@@ -590,9 +643,10 @@ export default function GameCanvas({
     const render = () => {
       if (isGameOverRef.current) return;
 
-      let realTime = 0;
+      let realTime = currentTimeRef.current;
 
-      if (!isCountingDownRef.current) {
+      // ATUALIZA O TEMPO APENAS SE ESTIVER JOGANDO (NÃO PAUSADO E NÃO EM CONTAGEM)
+      if (!isCountingDownRef.current && !isPausedRef.current) {
         const isAudioPlaying =
           audioRef.current &&
           !audioRef.current.paused &&
@@ -602,9 +656,9 @@ export default function GameCanvas({
         realTime = isAudioPlaying
           ? audioRef.current.currentTime * 1000 + offsetMs
           : Date.now() - gameStartTimeRef.current + offsetMs;
-      }
 
-      currentTimeRef.current = realTime;
+        currentTimeRef.current = realTime;
+      }
 
       if (bgImageRef.current) {
         ctx.drawImage(bgImageRef.current, 0, 0, canvas.width, canvas.height);
@@ -630,7 +684,7 @@ export default function GameCanvas({
       drawStrums(PLAYER_LANE_X, activeKeysRef.current);
       drawStrums(OPPONENT_LANE_X, opponentActiveKeysRef.current);
 
-      if (!isCountingDownRef.current) {
+      if (!isCountingDownRef.current && !isPausedRef.current) {
         opponentNotes.forEach((note, index) => {
           if (
             note.time <= realTime &&
@@ -708,6 +762,7 @@ export default function GameCanvas({
           if (
             isPlayerSide &&
             !isCountingDownRef.current &&
+            !isPausedRef.current &&
             timeDiff < -maxMissWindow &&
             !isBeingHeld &&
             !hitSet.has(index)
@@ -850,6 +905,19 @@ export default function GameCanvas({
             </div>
           )}
 
+          {isPaused && (
+            <div className="fnf-gameover-overlay">
+              <h1 className="fnf-gameover-title" style={{ color: "#00FFFF" }}>
+                PAUSADO
+              </h1>
+              <p className="fnf-gameover-sub">
+                Pressione <strong>ENTER</strong> para Retomar
+                <br />
+                Pressione <strong>ESC</strong> para Sair
+              </p>
+            </div>
+          )}
+
           {isGameOver && (
             <div className="fnf-gameover-overlay">
               <h1 className="fnf-gameover-title">GAME OVER</h1>
@@ -894,7 +962,7 @@ export default function GameCanvas({
             </div>
           </div>
 
-          {lastRating && (
+          {lastRating && !isPaused && (
             <div
               key={lastRating.id}
               className="rating-popup"
@@ -905,8 +973,8 @@ export default function GameCanvas({
           )}
 
           <p className="exit-hint">
-            Controles: <strong>{keybinds}</strong> | <strong>ESC</strong> para
-            sair
+            Controles: <strong>{keybinds}</strong> | <strong>ESC</strong> Pausar
+            / Sair
           </p>
         </div>
       </div>
