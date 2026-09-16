@@ -256,6 +256,18 @@ export default function App() {
     const playerChart = { notes: playerNotesArray };
     const opponentChart = { notes: opponentNotesArray };
 
+    const songSpeed =
+      rawPlayer?.speed ??
+      rawPlayer?.song?.speed ??
+      (typeof item === "object" ? item.speed : undefined) ??
+      1.7;
+
+    const songBpm =
+      rawPlayer?.bpm ??
+      rawPlayer?.song?.bpm ??
+      (typeof item === "object" ? item.bpm : undefined) ??
+      120;
+
     const audioUrl = new URL(
       `./assets/audio/musics/${songId}.ogg`,
       import.meta.url,
@@ -269,6 +281,8 @@ export default function App() {
     return {
       id: songId,
       title: songTitle,
+      speed: songSpeed,
+      bpm: songBpm,
       audioUrl,
       bgUrl,
       playerChart,
@@ -411,10 +425,23 @@ export default function App() {
           className="game-screen-wrapper"
           style={{ position: "relative", width: 1280, height: 720 }}
         >
-          <CharacterCanvas
-            playerAnim={playerAnim}
-            opponentAnim={opponentAnim}
-          />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              transform: "translateX(60px)", // 👈 Ajuste este valor em pixels para mover mais à direita (ex: 40px, 60px, 100px)
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          >
+            <CharacterCanvas
+              playerAnim={playerAnim}
+              opponentAnim={opponentAnim}
+            />
+          </div>
           <GameCanvas
             songData={selectedSongData}
             difficulty={currentDifficulty}

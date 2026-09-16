@@ -235,7 +235,6 @@ export default function GameCanvas({
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Função utilitária para cortar QUALQUER som imediatamente
   const stopAllAudio = () => {
     stopAllSfx();
     if (audioRef.current) {
@@ -266,19 +265,16 @@ export default function GameCanvas({
 
   const hitCountRef = useRef(0);
 
-  // Estados
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
   const [accuracy, setAccuracy] = useState("0.00");
   const [lastRating, setLastRating] = useState(null);
 
-  // Sistema de Vida & Game Over
   const [health, setHealth] = useState(50);
   const healthRef = useRef(50);
   const [isGameOver, setIsGameOver] = useState(false);
   const isGameOverRef = useRef(false);
 
-  // Contagem Regressiva & Bloqueio de Teclas
   const [countdownStep, setCountdownStep] = useState(null);
   const isCountingDownRef = useRef(true);
   const gameStartTimeRef = useRef(0);
@@ -314,11 +310,35 @@ export default function GameCanvas({
     playerNotesRef.current = playerNotes;
   }, [playerNotes]);
 
-  const bpm = songData?.playerChart?.bpm || songData?.bpm || 120;
+  // CÁLCULOS DA VELOCIDADE
+  const songRoot = songData?.song || songData?.playerChart || songData;
+
+  const baseSpeed =
+    songData?.speed ??
+    songData?.playerChart?.speed ??
+    songData?.song?.speed ??
+    1.7;
+
+  const bpm =
+    songData?.bpm ?? songData?.playerChart?.bpm ?? songData?.song?.bpm ?? 120;
+
   const bpmMultiplier = bpm / 120;
-  const baseSpeed = songData?.playerChart?.speed || songData?.speed || 1.5;
-  const scrollSpeed =
-    baseSpeed * bpmMultiplier * currentDiffConfig.speedMultiplier * 0.5;
+  const diffMultiplier = currentDiffConfig.speedMultiplier;
+  const scrollSpeed = baseSpeed * bpmMultiplier * diffMultiplier * 0.5;
+
+  // DEBUG CONSOLE: Exibe no DevTools os valores calculados
+  useEffect(() => {
+    console.log("🔍 [DEBUG CHART INFO]", {
+      rawSongData: songData,
+      songRootExtracted: songRoot,
+      songTitle: songRoot?.title || "Desconhecido",
+      bpm,
+      bpmMultiplier,
+      baseSpeed,
+      diffMultiplier,
+      finalScrollSpeed: scrollSpeed,
+    });
+  }, [songData, diffKey, scrollSpeed]);
 
   useEffect(() => {
     if (songData?.bgUrl) {
@@ -335,7 +355,6 @@ export default function GameCanvas({
     }
   }, [songData]);
 
-  // Sequência e Inicialização da Fase
   useEffect(() => {
     hitNotesRef.current.clear();
     opponentHitNotesRef.current.clear();
@@ -375,7 +394,6 @@ export default function GameCanvas({
       if (currentStepIndex < countdownSteps.length) {
         setCountdownStep(countdownSteps[currentStepIndex]);
 
-        // No passo "GO!", descongela o jogo e inicia a música
         if (countdownSteps[currentStepIndex].text === "GO!") {
           isCountingDownRef.current = false;
           gameStartTimeRef.current = Date.now();
@@ -394,7 +412,7 @@ export default function GameCanvas({
 
     return () => {
       clearInterval(interval);
-      stopAllSfx(); // Garante que a contagem para se desmontar a tela
+      stopAllSfx();
     };
   }, [songData]);
 
@@ -506,7 +524,7 @@ export default function GameCanvas({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        stopAllAudio(); // 🛑 Para SFX e Música na hora
+        stopAllAudio();
         if (callbacksRef.current.onExit) {
           callbacksRef.current.onExit(scoreRef.current);
         }
@@ -574,7 +592,6 @@ export default function GameCanvas({
 
       let realTime = 0;
 
-      // Se estiver em contagem regressiva, o tempo fica congelado em 0
       if (!isCountingDownRef.current) {
         const isAudioPlaying =
           audioRef.current &&
@@ -613,7 +630,6 @@ export default function GameCanvas({
       drawStrums(PLAYER_LANE_X, activeKeysRef.current);
       drawStrums(OPPONENT_LANE_X, opponentActiveKeysRef.current);
 
-      // Botplay Oponente (só processa se a partida tiver começado)
       if (!isCountingDownRef.current) {
         opponentNotes.forEach((note, index) => {
           if (
@@ -653,7 +669,6 @@ export default function GameCanvas({
           }
         });
 
-        // Holds do Player
         PLAYER_LANE_X.forEach((_, lane) => {
           const activeHold = activeHoldsRef.current.get(lane);
           if (activeHold) {
@@ -803,7 +818,7 @@ export default function GameCanvas({
       if (audioRef.current) {
         audioRef.current.removeEventListener("ended", handleAudioEnd);
       }
-      stopAllAudio(); // 🛑 Garante encerramento total de áudio ao sair da página/componente
+      stopAllAudio();
       audioRef.current = null;
     };
   }, [
@@ -826,7 +841,6 @@ export default function GameCanvas({
         />
 
         <div className="game-ui-overlay">
-          {/* Overlay da Contagem Regressiva */}
           {countdownStep && (
             <div
               className="fnf-countdown-overlay"
@@ -836,7 +850,6 @@ export default function GameCanvas({
             </div>
           )}
 
-          {/* Overlay de Game Over */}
           {isGameOver && (
             <div className="fnf-gameover-overlay">
               <h1 className="fnf-gameover-title">GAME OVER</h1>
@@ -846,15 +859,17 @@ export default function GameCanvas({
             </div>
           )}
 
-          {/* HUD Principal */}
           <div
             className={`fnf-hud-container ${isDownscroll ? "position-top" : "position-bottom"}`}
           >
             <div className="fnf-song-title">
-              {songData?.title || songData?.name || "Test Track"} - [{diffKey}]
+              {songRoot?.title ||
+                songData?.title ||
+                songData?.name ||
+                "Test Track"}{" "}
+              - [{diffKey}]
             </div>
 
-            {/* Barra de Vida */}
             <div className="fnf-health-bar-container">
               <div
                 className="fnf-health-bar-fill"
