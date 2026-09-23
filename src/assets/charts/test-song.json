@@ -7,17 +7,17 @@
       {
         "time": 1500,
         "lane": 0,
-        "type": "normal"
+        "type": "tap"
       },
       {
         "time": 2500,
         "lane": 1,
-        "type": "normal"
+        "type": "tap"
       },
       {
         "time": 3500,
         "lane": 2,
-        "type": "normal"
+        "type": "tap"
       },
       {
         "time": 5000,
@@ -28,7 +28,7 @@
       {
         "time": 9000,
         "lane": 0,
-        "type": "normal"
+        "type": "tap"
       }
     ]
   }

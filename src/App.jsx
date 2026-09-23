@@ -18,19 +18,7 @@ import countdownSfxAudio from "./assets/audio/sfx/countdown-sfx.mp3";
 import { loadSfx } from "./utils/useAudio";
 import { saveHighScore, saveWeekHighScore } from "./utils/highScoreUtils";
 
-const bgImages = import.meta.glob(
-  "./assets/images/backgrounds/*.{jpg,jpeg,png,webp}",
-  {
-    eager: true,
-    import: "default",
-  },
-);
-
-// Carrega todos os arquivos JSON de charts na memória (igual feito com bgImages)
-const chartFiles = import.meta.glob("./assets/charts/*.json", {
-  eager: true,
-  import: "default",
-});
+import { WEEKS, ALL_FREEPLAY_SONGS } from "./data/songsData";
 
 const LANE_ANIMATIONS = ["singLEFT", "singDOWN", "singUP", "singRIGHT"];
 
@@ -160,133 +148,28 @@ export default function App() {
     }
   }, [currentScreen, bgmVolume]);
 
-  const formatSongId = (str) =>
-    str
-      .toLowerCase()
-      .replace(/[']/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-  // Função de depuração temporária para diagnosticar o carregamento dos charts
-  const debugChartLoader = (
-    songId,
-    chartFiles,
-    playerKeyFound,
-    opponentKeyFound,
-    playerNotes,
-    opponentNotes,
-  ) => {
-    const availableKeys = Object.keys(chartFiles);
-
-    console.group(`🔍 [DEBUG CHART] Diagnóstico para: "${songId}"`);
-    console.log("📂 Chaves detectadas pelo Vite no diretório:", availableKeys);
-
-    if (!playerKeyFound) {
-      console.error(
-        `❌ [FALHA] Chart do Player NÃO encontrado para "${songId}".\n` +
-          `   Procurado por arquivo terminando em: "/${songId}-player.json"`,
-      );
-    } else if (playerNotes.length === 0) {
-      console.warn(
-        `⚠️ [AVISO] Arquivo "${playerKeyFound}" foi lido, mas a lista de notas está VAZIA.`,
-      );
-    } else {
-      console.log(
-        `✅ [SUCESSO] Player Chart carregado (${playerKeyFound}) - Total de notas: ${playerNotes.length}`,
-      );
-    }
-
-    if (!opponentKeyFound) {
-      console.warn(
-        `⚠️ [AVISO] Chart do Oponente NÃO encontrado para "${songId}".`,
-      );
-    } else {
-      console.log(
-        `✅ [SUCESSO] Opponent Chart carregado (${opponentKeyFound}) - Total de notas: ${opponentNotes.length}`,
-      );
-    }
-
-    console.groupEnd();
-  };
-
   const loadSongAssets = async (item) => {
-    const rawId =
-      typeof item === "string" ? item : item.id || item.title || item.name;
-    const songId =
-      typeof item === "object" && item.id ? item.id : formatSongId(rawId);
-    const songTitle =
-      typeof item === "string" ? item : item.title || item.name || songId;
+    // 1. Recebe os objetos de Chart já parseados pelo Vite
+    const playerChartObj = item.playerChart || {};
+    const opponentChartObj = item.opponentChart || playerChartObj;
 
-    const chartKeys = Object.keys(chartFiles);
+    // 2. Extrai as propriedades bpm, speed e title de dentro do 'song' do chart
+    const songData = playerChartObj.song || playerChartObj;
 
-    // Busca dinamicamente a chave terminando com o nome correto para evitar divergências de caminho
-    const playerKey = chartKeys.find((key) =>
-      key.toLowerCase().endsWith(`/${songId}-player.json`),
-    );
-    const opponentKey = chartKeys.find((key) =>
-      key.toLowerCase().endsWith(`/${songId}-opponent.json`),
-    );
+    const songTitle = songData.title || item.id || "Untitled";
+    const songBpm = songData.bpm ?? 120;
+    const songSpeed = songData.speed ?? 1.7;
 
-    const rawPlayer = playerKey ? chartFiles[playerKey] : [];
-    const rawOpponent = opponentKey ? chartFiles[opponentKey] : [];
-
-    // Extrai array de notas tratando múltiplos formatos de JSON
-    const extractNotes = (raw) => {
-      if (Array.isArray(raw)) return raw;
-      if (Array.isArray(raw?.notes)) return raw.notes;
-      if (Array.isArray(raw?.playerNotes)) return raw.playerNotes;
-      if (Array.isArray(raw?.opponentNotes)) return raw.opponentNotes;
-      if (Array.isArray(raw?.song?.notes)) return raw.song.notes;
-      return [];
-    };
-
-    const playerNotesArray = extractNotes(rawPlayer);
-    const opponentNotesArray = extractNotes(rawOpponent);
-
-    // Executa o diagnóstico no console
-    debugChartLoader(
-      songId,
-      chartFiles,
-      playerKey,
-      opponentKey,
-      playerNotesArray,
-      opponentNotesArray,
-    );
-
-    const playerChart = { notes: playerNotesArray };
-    const opponentChart = { notes: opponentNotesArray };
-
-    const songSpeed =
-      rawPlayer?.speed ??
-      rawPlayer?.song?.speed ??
-      (typeof item === "object" ? item.speed : undefined) ??
-      1.7;
-
-    const songBpm =
-      rawPlayer?.bpm ??
-      rawPlayer?.song?.bpm ??
-      (typeof item === "object" ? item.bpm : undefined) ??
-      120;
-
-    const audioUrl = new URL(
-      `./assets/audio/musics/${songId}.ogg`,
-      import.meta.url,
-    ).href;
-
-    const bgKey = Object.keys(bgImages).find((path) =>
-      path.toLowerCase().endsWith(`/${songId}.jpg`),
-    );
-    const bgUrl = bgKey ? bgImages[bgKey] : null;
-
+    // 3. Retorna o objeto completo para o GameCanvas
     return {
-      id: songId,
+      id: item.id,
       title: songTitle,
       speed: songSpeed,
       bpm: songBpm,
-      audioUrl,
-      bgUrl,
-      playerChart,
-      opponentChart,
+      audioUrl: item.audio, // URL da música gerada pelo import
+      bgUrl: item.bg || null, // URL do background gerada pelo import
+      playerChart: playerChartObj, // Objeto JS com as notas do player
+      opponentChart: opponentChartObj, // Objeto JS com as notas do oponente
     };
   };
 
@@ -326,18 +209,23 @@ export default function App() {
     setCurrentScreen("gameplay");
   };
 
-  const handleNextSongInWeek = async () => {
+  const handleNextSongInWeek = async (updatedTotalScore) => {
     const nextIndex = currentSongIndex + 1;
 
     if (nextIndex < weekPlaylist.length) {
-      const nextSongItem = weekPlaylist[nextIndex];
       setCurrentSongIndex(nextIndex);
 
+      const nextSongItem = weekPlaylist[nextIndex];
       const songPayload = await loadSongAssets(nextSongItem);
       setSelectedSongData({ ...songPayload, difficulty: currentDifficulty });
     } else {
+      // Fim da semana
+      saveWeekHighScore(activeWeekId, currentDifficulty, updatedTotalScore);
       setIsHardWeekCompleted(true);
+
       setWeekPlaylist([]);
+      setActiveWeekId(null);
+      setAccumulatedWeekScore(0);
       setCurrentScreen("menu");
     }
   };
@@ -349,24 +237,8 @@ export default function App() {
 
     if (activeWeekId && weekPlaylist.length > 0) {
       const totalSoFar = accumulatedWeekScore + finalScore;
-      const nextIndex = currentSongIndex + 1;
-
-      if (nextIndex < weekPlaylist.length) {
-        setAccumulatedWeekScore(totalSoFar);
-        setCurrentSongIndex(nextIndex);
-
-        const nextSongItem = weekPlaylist[nextIndex];
-        const songPayload = await loadSongAssets(nextSongItem);
-        setSelectedSongData({ ...songPayload, difficulty: currentDifficulty });
-      } else {
-        saveWeekHighScore(activeWeekId, currentDifficulty, totalSoFar);
-        setIsHardWeekCompleted(true);
-
-        setWeekPlaylist([]);
-        setActiveWeekId(null);
-        setAccumulatedWeekScore(0);
-        setCurrentScreen("menu");
-      }
+      setAccumulatedWeekScore(totalSoFar);
+      await handleNextSongInWeek(totalSoFar);
     } else {
       setCurrentScreen("menu");
     }

@@ -3,45 +3,9 @@ import "./FreeplayMenu.css";
 
 import { playSfx } from "../../utils/useAudio";
 import { getHighScore } from "../../utils/highScoreUtils";
-
-import kingDiceIcon from "../../assets/images/ui/king-dice-icon.png";
-import v1Icon from "../../assets/images/ui/v1-icon.png";
-import hornetIcon from "../../assets/images/ui/hornet-icon.png";
-import secretIcon from "../../assets/images/ui/secret-icon.png";
+import { ALL_FREEPLAY_SONGS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
-
-const SONG_LIST = [
-  {
-    id: "lets-go-gambling",
-    title: "LET'S GO GAMBLING",
-    character: "KING DICE",
-    icon: kingDiceIcon,
-    color: "#9B51E0",
-  },
-  {
-    id: "fight-or-flight",
-    title: "FIGHT OR FLIGHT",
-    character: "HORNET",
-    icon: hornetIcon,
-    color: "#FF0055",
-  },
-  {
-    id: "castle-chorus",
-    title: "CASTLE CHORUS",
-    character: "V1",
-    icon: v1Icon,
-    color: "#1140c0",
-  },
-  {
-    id: "last-stop",
-    title: "LAST STOP",
-    character: "???",
-    icon: secretIcon,
-    color: "#FFDE00",
-    isSecret: true,
-  },
-];
 
 export default function FreeplayMenu({
   sfxVolume = 1,
@@ -58,8 +22,9 @@ export default function FreeplayMenu({
   const lastInputRef = useRef("keyboard");
   const mousePosRef = useRef({ x: 0, y: 0 });
 
-  const visibleSongs = SONG_LIST.filter(
-    (song) => !song.isSecret || isSecretUnlocked
+  // Filtra músicas secretas usando ALL_FREEPLAY_SONGS do songsData.js
+  const visibleSongs = ALL_FREEPLAY_SONGS.filter(
+    (song) => !song.isSecret || isSecretUnlocked,
   );
 
   const currentSong = visibleSongs[selectedIndex];
@@ -80,7 +45,7 @@ export default function FreeplayMenu({
     }
   }, [selectedIndex]);
 
-  // Carrega a pontuação máxima gravada no localStorage
+  // Carrega o High Score gravado no localStorage
   useEffect(() => {
     if (currentSong?.id) {
       const score = getHighScore(currentSong.id, currentDifficulty);
@@ -101,7 +66,7 @@ export default function FreeplayMenu({
         return (prev + direction + visibleSongs.length) % visibleSongs.length;
       });
     },
-    [sfxVolume, visibleSongs.length]
+    [sfxVolume, visibleSongs.length],
   );
 
   const changeDifficulty = useCallback(
@@ -110,10 +75,10 @@ export default function FreeplayMenu({
       playSfx("scroll", sfxVolume);
       setDiffIndex(
         (prev) =>
-          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
       );
     },
-    [sfxVolume]
+    [sfxVolume],
   );
 
   const handleConfirm = useCallback(
@@ -132,7 +97,7 @@ export default function FreeplayMenu({
         });
       }
     },
-    [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong]
+    [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong],
   );
 
   const handleMouseMoveItem = (e, index) => {
@@ -224,6 +189,8 @@ export default function FreeplayMenu({
       <div className="freeplay-song-list">
         {visibleSongs.map((song, index) => {
           const isSelected = index === selectedIndex;
+          const displayTitle =
+            song.title || song.id.replace(/-/g, " ").toUpperCase();
 
           return (
             <div
@@ -237,18 +204,20 @@ export default function FreeplayMenu({
                 handleConfirm(song);
               }}
             >
-              <span className="song-title">{song.title}</span>
+              <span className="song-title">{displayTitle}</span>
 
-              <div className="icon-wrapper">
-                <img
-                  src={song.icon}
-                  alt={song.character}
-                  className="song-icon"
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                  }}
-                />
-              </div>
+              {song.icon && (
+                <div className="icon-wrapper">
+                  <img
+                    src={song.icon}
+                    alt={displayTitle}
+                    className="song-icon"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}

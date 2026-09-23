@@ -2,24 +2,32 @@ import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
 import { playSfx } from "../../utils/useAudio";
-import { getWeekHighScore } from "../../utils/highScoreUtils"; // Importa busca da semana
+import { getWeekHighScore } from "../../utils/highScoreUtils";
+import { WEEKS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
-const WEEK_DATA = {
-  id: "week1",
-  title: "WEEK 1",
-  tracks: [
-    { id: "lets-go-gambling", title: "LET'S GO GAMBLING" },
-    { id: "fight-or-flight", title: "FIGHT OR FLIGHT" },
-    { id: "castle-chorus", title: "CASTLE CHORUS" },
-  ],
-};
-
 export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
+  const [weekIndex, setWeekIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [isConfirming, setIsConfirming] = useState(false);
   const [weekScore, setWeekScore] = useState(0);
+
+  const currentWeek = WEEKS[weekIndex] || WEEKS[0];
+
+  // Seletor inteligente: mantém limites fixos (não faz loop infinito)
+  const changeWeek = useCallback(
+    (direction) => {
+      if (isConfirming) return;
+      setWeekIndex((prev) => {
+        const next = prev + direction;
+        if (next < 0 || next >= WEEKS.length) return prev;
+        playSfx("scroll", sfxVolume);
+        return next;
+      });
+    },
+    [isConfirming, sfxVolume],
+  );
 
   const changeDifficulty = useCallback(
     (direction) => {
@@ -27,10 +35,10 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       playSfx("scroll", sfxVolume);
       setDiffIndex(
         (prev) =>
-          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length
+          (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
       );
     },
-    [isConfirming, sfxVolume]
+    [isConfirming, sfxVolume],
   );
 
   const handleConfirm = useCallback(() => {
@@ -43,23 +51,33 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
     setTimeout(() => {
       if (onSelectWeek) {
         onSelectWeek({
-          ...WEEK_DATA,
+          ...currentWeek,
           difficulty: DIFFICULTIES[diffIndex],
         });
       }
     }, 1000);
-  }, [isConfirming, diffIndex, sfxVolume, onSelectWeek]);
+  }, [isConfirming, currentWeek, diffIndex, sfxVolume, onSelectWeek]);
 
-  // Recalcula o score total somando os pontos gravados de cada música na dificuldade atual
   useEffect(() => {
+    if (!currentWeek) return;
     const currentDifficulty = DIFFICULTIES[diffIndex];
-    const score = getWeekHighScore(WEEK_DATA.id, currentDifficulty);
-    setWeekScore(score);
-  }, [diffIndex]);
+    const score = getWeekHighScore(currentWeek.id, currentDifficulty);
+    setWeekScore(score || 0);
+  }, [weekIndex, diffIndex, currentWeek]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       switch (e.key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+          changeWeek(-1);
+          break;
+        case "ArrowDown":
+        case "s":
+        case "S":
+          changeWeek(1);
+          break;
         case "ArrowLeft":
         case "a":
         case "A":
@@ -86,7 +104,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [changeDifficulty, handleConfirm, onBack, sfxVolume]);
+  }, [changeWeek, changeDifficulty, handleConfirm, onBack, sfxVolume]);
 
   return (
     <div className="story-container">
@@ -102,16 +120,48 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
         <div className="tracks-column">
           <span className="tracks-header">TRACKS</span>
           <ul className="tracks-list">
-            {WEEK_DATA.tracks.map((track) => (
-              <li key={track.id}>{track.title}</li>
+            {(currentWeek.songs || currentWeek.tracks || []).map((song) => (
+              <li key={song.id}>
+                {song.title || song.id.replace(/-/g, " ").toUpperCase()}
+              </li>
             ))}
           </ul>
         </div>
 
+        {/* Carrossel Vertical da Semana */}
         <div className="week-title-column">
-          <h1 className={`week-title ${isConfirming ? "confirming" : ""}`}>
-            {WEEK_DATA.title}
-          </h1>
+          <div className="weeks-carousel-viewport">
+            <div
+              className="weeks-carousel-track"
+              style={{
+                transform: `translateY(${-weekIndex * 70 + 35}px)`,
+              }}
+            >
+              {WEEKS.map((week, idx) => {
+                const isSelected = idx === weekIndex;
+                return (
+                  <div
+                    key={week.id || idx}
+                    className={`week-item ${isSelected ? "selected" : ""}`}
+                    onClick={() => {
+                      if (!isConfirming && idx !== weekIndex) {
+                        playSfx("scroll", sfxVolume);
+                        setWeekIndex(idx);
+                      }
+                    }}
+                  >
+                    <h1
+                      className={`week-title ${
+                        isSelected && isConfirming ? "confirming" : ""
+                      }`}
+                    >
+                      {week.title}
+                    </h1>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="difficulty-column">

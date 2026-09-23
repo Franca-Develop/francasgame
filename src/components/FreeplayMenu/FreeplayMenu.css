@@ -8,9 +8,9 @@
               url('../../assets/images/backgrounds/menu-background.jpg') center/115% no-repeat;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* 👈 Mudado de 'center' para 'flex-start' */
   align-items: flex-start;
-  padding: 4rem 8vw 2rem 8vw;
+  padding: 110px 8vw 4rem 8vw; /* 👈 Padding superior ajustado para dar margem ao topo */
   box-sizing: border-box;
   user-select: none;
   font-family: 'Titan One', 'Fredoka', cursive, sans-serif;
@@ -104,7 +104,8 @@
   gap: 1.8rem;
   width: 100%;
   max-width: 700px;
-  margin-top: 2rem;
+  margin-top: 1rem;
+  padding-bottom: 4rem; /* 👈 Evita que a última música fique cortada no rodapé */
 }
 
 .freeplay-song-card {
