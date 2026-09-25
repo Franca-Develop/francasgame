@@ -1,7 +1,7 @@
 # Franca's Rythm Trip
 
-[!WARNING]
-## Em desenvolvimento
+> [!WARNING]
+> Em desenvolvimento
 
 Mais alterações em breve
 
