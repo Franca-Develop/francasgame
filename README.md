@@ -9,18 +9,21 @@ Versão atual: 0.2
 
 Desenvolvido por Felipe
 ---
-## Atualizações
-- [x] Design gráfico do jogo
-- [x] Motor do jogo funcionando corretamente
-- [/] Fases completas com músicas, sprites, charts e efeitos
-- [/] Suporte para alteração dos controles
-- [/] Padronização para todas as telas
-- [ ] Tela de créditos
-- [ ] Opções de linguagens
-- [ ] Versão Mobile retro-compatível
-- [ ] Mudança das opções gráficas
-- [ ] Modo multijogador local/online
-- [ ] Documentação do código funcional
+## 🛠️ Status do Projeto
+
+| Funcionalidade | Status |
+| :--- | :---: |
+| **Design gráfico do jogo** | 🟢 Concluído |
+| **Motor do jogo funcionando corretamente** | 🟢 Concluído |
+| **Fases completas (músicas, sprites, charts e efeitos)** | 🟡 Parcial |
+| **Padronização para todas as telas** | 🔴 Pendente |
+| **Suporte para alteração dos controles** | 🔴 Pendente |
+| **Mudança das opções gráficas** | 🔴 Pendente |
+| **Opções de linguagens** | 🔴 Pendente |
+| **Tela de créditos** | 🔴 Pendente |
+| **Versão Mobile retro-compatível** | 🔴 Pendente |
+| **Modo multijogador local/online** | 🔴 Pendente |
+| **Documentação do código funcional** | 🔴 Pendente |
 
 ## Melhorias
 - Melhorar o design das fases
