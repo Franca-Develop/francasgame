@@ -1,16 +1,36 @@
-# React + Vite
+# Franca's Rythm Trip
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+[!WARNING]
+## Em desenvolvimento
 
-Currently, two official plugins are available:
+Mais alterações em breve
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Versão atual: 0.2
 
-## React Compiler
+Desenvolvido por Felipe
+---
+## Atualizações
+- [x] Design gráfico do jogo
+- [x] Motor do jogo funcionando corretamente
+- [/] Fases completas com músicas, sprites, charts e efeitos
+- [/] Suporte para alteração dos controles
+- [/] Padronização para todas as telas
+- [ ] Tela de créditos
+- [ ] Opções de linguagens
+- [ ] Versão Mobile retro-compatível
+- [ ] Mudança das opções gráficas
+- [ ] Modo multijogador local/online
+- [ ] Documentação do código funcional
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Melhorias
+- Melhorar o design das fases
+- Melhorar o seletor de fases e semanas
+- Disponibilidade do download das músicas
+- Aumentar a qualidade do aúdio
+- Correção de bugs visuais
 
-## Expanding the Oxlint configuration
+## Sugestões
+Link para contato: francadev26@gmail.com
+Mande sugestões de melhoras no código, fases ou design!
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+
