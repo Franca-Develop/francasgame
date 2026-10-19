@@ -194,3 +194,32 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: 12px;
 }
+
+/* Overlay de Carregamento */
+.fnf-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+}
+
+.fnf-loading-text {
+  font-family: "Permanent Marker", cursive, sans-serif;
+  font-size: 48px;
+  color: #ffffff;
+  letter-spacing: 4px;
+  animation: loadingPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}

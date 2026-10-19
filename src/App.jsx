@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
 import StoryModeMenu from "./components/StoryModeMenu/StoryModeMenu";
@@ -15,9 +15,14 @@ import cancelSfxAudio from "./assets/audio/sfx/cancel-sfx.mp3";
 import yeahSfxAudio from "./assets/audio/sfx/yeah-sfx.mp3";
 import countdownSfxAudio from "./assets/audio/sfx/countdown-sfx.mp3";
 
-import { loadSfx } from "./utils/useAudio";
-import { saveHighScore, saveWeekHighScore } from "./utils/highScoreUtils";
+import {
+  loadSfx,
+  installAutoplayUnlock,
+  playLoopedMusic,
+  fadeOutLoopedMusic,
+} from "./utils/audioEngine";
 
+import { saveHighScore, saveWeekHighScore } from "./utils/highScoreUtils";
 import { WEEKS, ALL_FREEPLAY_SONGS } from "./data/songsData";
 
 const LANE_ANIMATIONS = ["singLEFT", "singDOWN", "singUP", "singRIGHT"];
@@ -26,46 +31,35 @@ export default function App() {
   const [selectedSongData, setSelectedSongData] = useState(null);
   const [currentScreen, setCurrentScreen] = useState("start");
   const [isHardWeekCompleted, setIsHardWeekCompleted] = useState(false);
-
-  // Estado global da dificuldade selecionada
   const [currentDifficulty, setCurrentDifficulty] = useState("NORMAL");
-
-  // Fila de músicas para o Story Mode (Week)
   const [weekPlaylist, setWeekPlaylist] = useState([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [activeWeekId, setActiveWeekId] = useState(null);
   const [accumulatedWeekScore, setAccumulatedWeekScore] = useState(0);
-
-  // Estados para controlar qual animação o Boyfriend e o Opponent estão fazendo
   const [playerAnim, setPlayerAnim] = useState("idle");
   const [opponentAnim, setOpponentAnim] = useState("idle");
 
-  // Estados Globais de Configurações
+  // ---------- Settings globais ----------
   const [bgmVolume, setBgmVolume] = useState(() => {
     const saved = localStorage.getItem("rhythm_bgm_vol");
     return saved !== null ? parseFloat(saved) : 0.5;
   });
-
   const [sfxVolume, setSfxVolume] = useState(() => {
     const saved = localStorage.getItem("rhythm_sfx_vol");
     return saved !== null ? parseFloat(saved) : 0.7;
   });
-
   const [audioOffset, setAudioOffset] = useState(() => {
     const saved = localStorage.getItem("rhythm_audio_offset");
     return saved !== null ? parseInt(saved, 10) : 0;
   });
-
   const [keybinds, setKeybinds] = useState(() => {
     return localStorage.getItem("rhythm_keybinds") || "ARROWS";
   });
-
   const [isDownscroll, setIsDownscroll] = useState(() => {
     const saved = localStorage.getItem("isDownscroll");
     return saved !== null ? JSON.parse(saved) : false;
   });
 
-  // Salva no localStorage
   useEffect(() => {
     localStorage.setItem("rhythm_bgm_vol", bgmVolume.toString());
     localStorage.setItem("rhythm_sfx_vol", sfxVolume.toString());
@@ -73,6 +67,12 @@ export default function App() {
     localStorage.setItem("rhythm_keybinds", keybinds);
     localStorage.setItem("isDownscroll", JSON.stringify(isDownscroll));
   }, [bgmVolume, sfxVolume, audioOffset, keybinds, isDownscroll]);
+
+  // ---------- Áudio ----------
+  // Instala o destravador de autoplay UMA vez
+  useEffect(() => {
+    installAutoplayUnlock();
+  }, []);
 
   // Carrega SFXs na RAM
   useEffect(() => {
@@ -83,100 +83,44 @@ export default function App() {
     loadSfx("countdown", countdownSfxAudio);
   }, []);
 
-  // Web Audio API para o BGM do Menu
-  const audioCtxRef = useRef(null);
-  const audioRef = useRef(null);
-  const gainNodeRef = useRef(null);
-
+  // BGM do menu/settings via engine (preserva volumes e fade originais)
   useEffect(() => {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-    audioCtxRef.current = ctx;
-
-    const audio = new Audio(menuThemeAudio);
-    audio.loop = true;
-    audioRef.current = audio;
-
-    const source = ctx.createMediaElementSource(audio);
-    const gainNode = ctx.createGain();
-    gainNodeRef.current = gainNode;
-
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
-
-    return () => {
-      if (audioRef.current) audioRef.current.pause();
-      if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-        audioCtxRef.current.close();
-      }
-    };
-  }, []);
-
-  // Controle de volume do BGM entre telas
-  useEffect(() => {
-    if (!audioCtxRef.current || !gainNodeRef.current || !audioRef.current)
-      return;
-
-    const ctx = audioCtxRef.current;
-    const gainNode = gainNodeRef.current;
-    const audio = audioRef.current;
-    const targetVol = bgmVolume * 0.25;
-
     if (currentScreen === "menu" || currentScreen === "settings") {
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
-      if (audio.paused) audio.play().catch(() => {});
-
-      gainNode.gain.cancelScheduledValues(ctx.currentTime);
-      const desiredVol =
-        currentScreen === "menu" ? targetVol : targetVol * 0.35;
-      gainNode.gain.linearRampToValueAtTime(
-        Math.max(0.0001, desiredVol),
-        ctx.currentTime + 0.4,
-      );
+      const base = currentScreen === "menu" ? bgmVolume : bgmVolume * 0.35;
+      const target = base * 0.25;
+      playLoopedMusic({
+        id: "menu",
+        url: menuThemeAudio,
+        volume: target,
+        fadeMs: 400,
+      });
     } else {
-      gainNode.gain.cancelScheduledValues(ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-
-      const timeoutId = setTimeout(() => {
-        if (currentScreen !== "menu" && currentScreen !== "settings") {
-          audio.pause();
-        }
-      }, 400);
-
-      return () => clearTimeout(timeoutId);
+      fadeOutLoopedMusic("menu", 400);
     }
   }, [currentScreen, bgmVolume]);
 
   const loadSongAssets = async (item) => {
-    // 1. Recebe os objetos de Chart já parseados pelo Vite
     const playerChartObj = item.playerChart || {};
     const opponentChartObj = item.opponentChart || playerChartObj;
-
-    // 2. Extrai as propriedades bpm, speed e title de dentro do 'song' do chart
     const songData = playerChartObj.song || playerChartObj;
 
     const songTitle = songData.title || item.id || "Untitled";
     const songBpm = songData.bpm ?? 120;
     const songSpeed = songData.speed ?? 1.7;
 
-    // 3. Retorna o objeto completo para o GameCanvas
     return {
       id: item.id,
       title: songTitle,
       speed: songSpeed,
       bpm: songBpm,
-      audioUrl: item.audio, // URL da música gerada pelo import
-      bgUrl: item.bg || null, // URL do background gerada pelo import
-      playerChart: playerChartObj, // Objeto JS com as notas do player
-      opponentChart: opponentChartObj, // Objeto JS com as notas do oponente
+      audioUrl: item.audio,
+      bgUrl: item.bg || null,
+      playerChart: playerChartObj,
+      opponentChart: opponentChartObj,
     };
   };
 
   const handleStartFromTitle = () => {
-    if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume();
-    }
     setCurrentScreen("menu");
   };
 
@@ -214,15 +158,12 @@ export default function App() {
 
     if (nextIndex < weekPlaylist.length) {
       setCurrentSongIndex(nextIndex);
-
       const nextSongItem = weekPlaylist[nextIndex];
       const songPayload = await loadSongAssets(nextSongItem);
       setSelectedSongData({ ...songPayload, difficulty: currentDifficulty });
     } else {
-      // Fim da semana
       saveWeekHighScore(activeWeekId, currentDifficulty, updatedTotalScore);
       setIsHardWeekCompleted(true);
-
       setWeekPlaylist([]);
       setActiveWeekId(null);
       setAccumulatedWeekScore(0);
@@ -304,7 +245,7 @@ export default function App() {
               left: 0,
               width: "100%",
               height: "100%",
-              transform: "translateX(60px)", // 👈 Ajuste este valor em pixels para mover mais à direita (ex: 40px, 60px, 100px)
+              transform: "translateX(60px)",
               pointerEvents: "none",
               zIndex: 1,
             }}
