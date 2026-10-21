@@ -7,7 +7,6 @@ import SettingsMenu from "./components/SettingsMenu/SettingsMenu";
 import GameCanvas from "./components/GameCanvas/GameCanvas";
 import CharacterCanvas from "./components/CharacterCanvas/CharacterCanvas";
 
-// Músicas e SFX padrão do Menu
 import menuThemeAudio from "./assets/audio/musics/menu-theme.mp3";
 import scrollSfxAudio from "./assets/audio/sfx/scroll-sfx.mp3";
 import selectSfxAudio from "./assets/audio/sfx/select-sfx.mp3";
@@ -18,19 +17,49 @@ import countdownSfxAudio from "./assets/audio/sfx/countdown-sfx.mp3";
 import {
   loadSfx,
   installAutoplayUnlock,
-  playLoopedMusic,
-  fadeOutLoopedMusic,
+  reconcileBgm,
 } from "./utils/audioEngine";
 
-import { saveHighScore, saveWeekHighScore } from "./utils/highScoreUtils";
 import { WEEKS, ALL_FREEPLAY_SONGS } from "./data/songsData";
+import { SettingsProvider, useSettings } from "./contexts/SettingsContext";
+import { ProgressProvider, useProgress } from "./contexts/ProgressContext";
 
 const LANE_ANIMATIONS = ["singLEFT", "singDOWN", "singUP", "singRIGHT"];
 
 export default function App() {
+  return (
+    <SettingsProvider>
+      <ProgressProvider>
+        <AppInner />
+      </ProgressProvider>
+    </SettingsProvider>
+  );
+}
+
+function AppInner() {
+  const {
+    bgmVolume,
+    sfxVolume,
+    audioOffset,
+    keybinds,
+    isDownscroll,
+    setBgmVolume,
+    setSfxVolume,
+    setAudioOffset,
+    setKeybinds,
+    setIsDownscroll,
+  } = useSettings();
+
+  const {
+    isSecretUnlocked,
+    toggleDebugSecret,
+    recordSongScore,
+    recordWeekScore,
+    markWeekCompleted,
+  } = useProgress();
+
   const [selectedSongData, setSelectedSongData] = useState(null);
   const [currentScreen, setCurrentScreen] = useState("start");
-  const [isHardWeekCompleted, setIsHardWeekCompleted] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState("NORMAL");
   const [weekPlaylist, setWeekPlaylist] = useState([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
@@ -39,42 +68,11 @@ export default function App() {
   const [playerAnim, setPlayerAnim] = useState("idle");
   const [opponentAnim, setOpponentAnim] = useState("idle");
 
-  // ---------- Settings globais ----------
-  const [bgmVolume, setBgmVolume] = useState(() => {
-    const saved = localStorage.getItem("rhythm_bgm_vol");
-    return saved !== null ? parseFloat(saved) : 0.5;
-  });
-  const [sfxVolume, setSfxVolume] = useState(() => {
-    const saved = localStorage.getItem("rhythm_sfx_vol");
-    return saved !== null ? parseFloat(saved) : 0.7;
-  });
-  const [audioOffset, setAudioOffset] = useState(() => {
-    const saved = localStorage.getItem("rhythm_audio_offset");
-    return saved !== null ? parseInt(saved, 10) : 0;
-  });
-  const [keybinds, setKeybinds] = useState(() => {
-    return localStorage.getItem("rhythm_keybinds") || "ARROWS";
-  });
-  const [isDownscroll, setIsDownscroll] = useState(() => {
-    const saved = localStorage.getItem("isDownscroll");
-    return saved !== null ? JSON.parse(saved) : false;
-  });
-
-  useEffect(() => {
-    localStorage.setItem("rhythm_bgm_vol", bgmVolume.toString());
-    localStorage.setItem("rhythm_sfx_vol", sfxVolume.toString());
-    localStorage.setItem("rhythm_audio_offset", audioOffset.toString());
-    localStorage.setItem("rhythm_keybinds", keybinds);
-    localStorage.setItem("isDownscroll", JSON.stringify(isDownscroll));
-  }, [bgmVolume, sfxVolume, audioOffset, keybinds, isDownscroll]);
-
   // ---------- Áudio ----------
-  // Instala o destravador de autoplay UMA vez
   useEffect(() => {
     installAutoplayUnlock();
   }, []);
 
-  // Carrega SFXs na RAM
   useEffect(() => {
     loadSfx("scroll", scrollSfxAudio);
     loadSfx("select", selectSfxAudio);
@@ -83,20 +81,17 @@ export default function App() {
     loadSfx("countdown", countdownSfxAudio);
   }, []);
 
-  // BGM do menu/settings via engine (preserva volumes e fade originais)
+  // BGM do menu/settings via reconcile (fim das races)
   useEffect(() => {
-    if (currentScreen === "menu" || currentScreen === "settings") {
-      const base = currentScreen === "menu" ? bgmVolume : bgmVolume * 0.35;
-      const target = base * 0.25;
-      playLoopedMusic({
-        id: "menu",
-        url: menuThemeAudio,
-        volume: target,
-        fadeMs: 400,
-      });
-    } else {
-      fadeOutLoopedMusic("menu", 400);
-    }
+    const menuVolume =
+      (currentScreen === "settings" ? bgmVolume * 0.35 : bgmVolume) * 0.25;
+
+    const shouldPlayMenu =
+      currentScreen === "menu" || currentScreen === "settings";
+
+    reconcileBgm(shouldPlayMenu ? "menu" : null, {
+      menu: { url: menuThemeAudio, volume: menuVolume, fadeMs: 400 },
+    });
   }, [currentScreen, bgmVolume]);
 
   const loadSongAssets = async (item) => {
@@ -162,8 +157,9 @@ export default function App() {
       const songPayload = await loadSongAssets(nextSongItem);
       setSelectedSongData({ ...songPayload, difficulty: currentDifficulty });
     } else {
-      saveWeekHighScore(activeWeekId, currentDifficulty, updatedTotalScore);
-      setIsHardWeekCompleted(true);
+      recordWeekScore(activeWeekId, currentDifficulty, updatedTotalScore);
+      markWeekCompleted(activeWeekId, currentDifficulty);
+
       setWeekPlaylist([]);
       setActiveWeekId(null);
       setAccumulatedWeekScore(0);
@@ -173,7 +169,7 @@ export default function App() {
 
   const handleSongComplete = async (finalScore) => {
     if (selectedSongData?.id) {
-      saveHighScore(selectedSongData.id, currentDifficulty, finalScore);
+      recordSongScore(selectedSongData.id, currentDifficulty, finalScore);
     }
 
     if (activeWeekId && weekPlaylist.length > 0) {
@@ -226,8 +222,8 @@ export default function App() {
       {currentScreen === "freeplay" && (
         <FreeplayMenu
           sfxVolume={sfxVolume}
-          isSecretUnlocked={isHardWeekCompleted}
-          onToggleSecret={() => setIsHardWeekCompleted((prev) => !prev)}
+          isSecretUnlocked={isSecretUnlocked}
+          onToggleSecret={toggleDebugSecret}
           onStartSong={(song) => handleStartGameplay(song)}
           onBack={() => setCurrentScreen("menu")}
         />

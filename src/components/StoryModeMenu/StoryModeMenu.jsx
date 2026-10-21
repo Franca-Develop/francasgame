@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 import { getWeekHighScore } from "../../utils/highScoreUtils";
 import { WEEKS } from "../../data/songsData";
 

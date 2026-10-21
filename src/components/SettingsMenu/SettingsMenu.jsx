@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./SettingsMenu.css";
 
 // Importa o utilitário de SFX com latência zero
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 
 const KEYBIND_PRESETS = ["ARROWS", "WASD", "DFJK"];
 

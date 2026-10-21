@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./MainMenu.css";
 
 // Importa o gerenciador global de SFX via Web Audio API
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 
 const MENU_OPTIONS = [
   { id: "story", label: "STORY MODE", color: "#FF0055" },

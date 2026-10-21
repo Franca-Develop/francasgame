@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./FreeplayMenu.css";
 
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 import { getHighScore } from "../../utils/highScoreUtils";
 import { ALL_FREEPLAY_SONGS } from "../../data/songsData";
 

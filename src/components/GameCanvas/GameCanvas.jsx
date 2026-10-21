@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
-import { playSfx, stopAllSfx } from "../../utils/useAudio";
+import { playSfx, stopAllSfx } from "../../utils/audioEngine";
 import {
   loadGameplaySong,
   playGameplaySong,
