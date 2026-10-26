@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./MainMenu.css";
 
-// Importa o gerenciador global de SFX via Web Audio API
 import { playSfx } from "../../utils/audioEngine";
 
 const MENU_OPTIONS = [
@@ -44,7 +43,6 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    // Toca os efeitos de confirmação instantaneamente
     playSfx("select", sfxVolume, 1.1);
 
     const selectedOption = MENU_OPTIONS[selectedIndex].id;
@@ -103,8 +101,6 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
 
   return (
     <div className="main-menu-container">
-      <div className="menu-spacer" />
-
       <nav className="menu-options-list">
         {MENU_OPTIONS.map((item, index) => {
           const isSelected = index === selectedIndex;
@@ -123,20 +119,11 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
                 handleConfirm();
               }}
             >
-              <span className="item-arrow-left">▶</span>
               <span className="item-text">{item.label}</span>
-              <span className="item-arrow-right">◀</span>
             </button>
           );
         })}
       </nav>
-
-      <footer className="menu-footer">
-        <span>
-          [W/S] ou [SETAS] Navegar &nbsp;|&nbsp; [ENTER] Selecionar
-          &nbsp;|&nbsp; [ESC] Voltar
-        </span>
-      </footer>
     </div>
   );
 }
