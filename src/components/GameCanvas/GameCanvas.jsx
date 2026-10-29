@@ -581,7 +581,7 @@ export default function GameCanvas({
         setIsPaused(false);
 
         runCountdownSequence(() => {
-          resumeGameplaySong(optionsRef.current.bgmVolume);
+          resumeGameplaySong((optionsRef.current.bgmVolume ?? 100) / 100);
         });
         return;
       }

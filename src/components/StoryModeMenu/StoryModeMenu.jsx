@@ -138,7 +138,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
             <div
               className="weeks-carousel-track"
               style={{
-                transform: `translateY(${-weekIndex * 70 + 35}px)`,
+                transform: `translateY(${-weekIndex * 80 + 35}px)`,
               }}
             >
               {WEEKS.map((week, idx) => {
