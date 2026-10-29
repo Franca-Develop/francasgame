@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./FreeplayMenu.css";
 
 import { playSfx } from "../../utils/audioEngine";
-import { getHighScore } from "../../utils/highScoreUtils";
+import { useProgress } from "../../contexts/ProgressContext";
 import { ALL_FREEPLAY_SONGS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
@@ -14,6 +14,8 @@ export default function FreeplayMenu({
   onStartSong,
   onBack,
 }) {
+  const { getSongHighScore } = useProgress();
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [highScore, setHighScore] = useState(0);
@@ -48,7 +50,7 @@ export default function FreeplayMenu({
   // Carrega o High Score gravado no localStorage
   useEffect(() => {
     if (currentSong?.id) {
-      const score = getHighScore(currentSong.id, currentDifficulty);
+      const score = getSongHighScore(currentSong.id, currentDifficulty);
       setHighScore(score || 0);
     } else {
       setHighScore(0);
@@ -58,7 +60,7 @@ export default function FreeplayMenu({
   const changeSong = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setSelectedIndex((prev) => {
         if (prev === -1) {
           return direction > 0 ? 0 : visibleSongs.length - 1;
@@ -72,7 +74,7 @@ export default function FreeplayMenu({
   const changeDifficulty = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setDiffIndex(
         (prev) =>
           (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
@@ -89,7 +91,7 @@ export default function FreeplayMenu({
 
       if (!selectedSong) return;
 
-      playSfx("select", sfxVolume, 1.1);
+      playSfx("select", (sfxVolume / 100) * 1.1);
       if (onStartSong) {
         onStartSong({
           ...selectedSong,
@@ -110,7 +112,7 @@ export default function FreeplayMenu({
       lastInputRef.current = "mouse";
 
       if (selectedIndex !== index) {
-        playSfx("scroll", sfxVolume);
+        playSfx("scroll", sfxVolume / 100);
         setSelectedIndex(index);
       }
     }
@@ -144,12 +146,12 @@ export default function FreeplayMenu({
           handleConfirm();
           break;
         case "7":
-          playSfx("select", sfxVolume);
+          playSfx("select", sfxVolume / 100);
           if (onToggleSecret) onToggleSecret();
           break;
         case "Escape":
         case "Backspace":
-          playSfx("cancel", sfxVolume);
+          playSfx("cancel", sfxVolume / 100);
           if (onBack) onBack();
           break;
         default:
