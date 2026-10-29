@@ -2,12 +2,14 @@
 // Migração centralizada de localStorage. Idempotente.
 // Cada domínio (settings, progress) tem sua chave frrt_* versionada.
 
+// src/utils/migrateStorage.js
+
 const SETTINGS_KEY = "frrt_settings";
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2; // ← Bump para 2
 
 const SETTINGS_DEFAULTS = {
-  bgmVolume: 0.5,
-  sfxVolume: 0.7,
+  bgmVolume: 50, // ← Era 0.5
+  sfxVolume: 70, // ← Era 0.7
   audioOffset: 0,
   keybinds: "ARROWS",
   isDownscroll: false,
@@ -44,18 +46,23 @@ function safeParseBool(str, fallback) {
   }
 }
 
-/**
- * Carrega settings. Se frrt_settings existir, usa. Senão, migra de chaves legadas.
- * Sempre retorna o shape completo (com defaults preenchidos).
- */
 export function loadSettings() {
   // 1. Tenta ler a versão nova
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
+
+      // Migração v1 -> v2 (escala de volume 0.0-1.0 para 1-100)
+      if (parsed.version === 1) {
+        parsed.bgmVolume = Math.round((parsed.bgmVolume || 0.5) * 100);
+        parsed.sfxVolume = Math.round((parsed.sfxVolume || 0.7) * 100);
+        parsed.version = 2;
+        // Persiste imediatamente para não migrar de novo no próximo load
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+      }
+
       const { version, ...rest } = parsed;
-      // Merge com defaults pra sobreviver a updates futuros
       return { ...SETTINGS_DEFAULTS, ...rest };
     }
   } catch (err) {
@@ -65,15 +72,15 @@ export function loadSettings() {
     );
   }
 
-  // 2. Migra do legado (primeira vez ou recuperação)
+  // 2. Migra do legado
   const migrated = {
-    bgmVolume: safeParseNum(
-      localStorage.getItem(LEGACY_SETTINGS_KEYS.bgmVolume),
-      SETTINGS_DEFAULTS.bgmVolume,
+    bgmVolume: Math.round(
+      safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.bgmVolume), 0.5) *
+        100,
     ),
-    sfxVolume: safeParseNum(
-      localStorage.getItem(LEGACY_SETTINGS_KEYS.sfxVolume),
-      SETTINGS_DEFAULTS.sfxVolume,
+    sfxVolume: Math.round(
+      safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.sfxVolume), 0.7) *
+        100,
     ),
     audioOffset: safeParseInt(
       localStorage.getItem(LEGACY_SETTINGS_KEYS.audioOffset),
@@ -89,7 +96,7 @@ export function loadSettings() {
     ),
   };
 
-  // 3. Persiste na nova chave (com version)
+  // 3. Persiste na nova chave
   try {
     localStorage.setItem(
       SETTINGS_KEY,
@@ -97,10 +104,10 @@ export function loadSettings() {
     );
   } catch (err) {
     console.warn("[migrateStorage] Falha ao salvar frrt_settings", err);
-    return migrated; // mesmo assim retorna, não trava o app
+    return migrated;
   }
 
-  // 4. Remove chaves legadas (só se a persistência acima deu certo)
+  // 4. Remove chaves legadas
   Object.values(LEGACY_SETTINGS_KEYS).forEach((key) => {
     try {
       localStorage.removeItem(key);
@@ -153,13 +160,25 @@ export function loadProgress() {
       return {
         ...PROGRESS_DEFAULTS,
         ...rest,
-        songHighScores: { ...PROGRESS_DEFAULTS.songHighScores, ...(rest.songHighScores || {}) },
-        weekHighScores: { ...PROGRESS_DEFAULTS.weekHighScores, ...(rest.weekHighScores || {}) },
-        completedWeeks: { ...PROGRESS_DEFAULTS.completedWeeks, ...(rest.completedWeeks || {}) },
+        songHighScores: {
+          ...PROGRESS_DEFAULTS.songHighScores,
+          ...(rest.songHighScores || {}),
+        },
+        weekHighScores: {
+          ...PROGRESS_DEFAULTS.weekHighScores,
+          ...(rest.weekHighScores || {}),
+        },
+        completedWeeks: {
+          ...PROGRESS_DEFAULTS.completedWeeks,
+          ...(rest.completedWeeks || {}),
+        },
       };
     }
   } catch (err) {
-    console.warn("[migrateStorage] frrt_progress corrompido, migrando de legado", err);
+    console.warn(
+      "[migrateStorage] frrt_progress corrompido, migrando de legado",
+      err,
+    );
   }
 
   // 2. Migra fnf_highscores → songHighScores
@@ -203,7 +222,7 @@ export function loadProgress() {
   try {
     localStorage.setItem(
       PROGRESS_KEY,
-      JSON.stringify({ ...migrated, version: PROGRESS_VERSION })
+      JSON.stringify({ ...migrated, version: PROGRESS_VERSION }),
     );
   } catch (err) {
     console.warn("[migrateStorage] Falha ao salvar frrt_progress", err);
@@ -211,9 +230,17 @@ export function loadProgress() {
   }
 
   // 5. Remove legados (só se persistiu)
-  try { localStorage.removeItem(LEGACY_SONG_SCORES_KEY); } catch { /* noop */ }
+  try {
+    localStorage.removeItem(LEGACY_SONG_SCORES_KEY);
+  } catch {
+    /* noop */
+  }
   legacyWeekKeys.forEach((key) => {
-    try { localStorage.removeItem(key); } catch { /* noop */ }
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* noop */
+    }
   });
 
   return migrated;
@@ -223,7 +250,7 @@ export function persistProgress(progress) {
   try {
     localStorage.setItem(
       PROGRESS_KEY,
-      JSON.stringify({ ...progress, version: PROGRESS_VERSION })
+      JSON.stringify({ ...progress, version: PROGRESS_VERSION }),
     );
   } catch (err) {
     console.warn("[migrateStorage] Falha ao persistir progress", err);

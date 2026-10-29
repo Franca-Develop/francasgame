@@ -113,8 +113,10 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       <header className="story-header">
         <span className="week-score">WEEK SCORE: {weekScore}</span>
       </header>
-
-      <main className="story-banner-container">
+      <main
+        className="story-banner-container"
+        style={{ backgroundColor: currentWeek?.theme?.bg || "#af0ccf" }}
+      >
         <div className="character-canvas-placeholder" />
       </main>
 
@@ -145,6 +147,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
                   <div
                     key={week.id || idx}
                     className={`week-item ${isSelected ? "selected" : ""}`}
+                    style={{ "--accent": week.theme?.accent || "#de5ae2" }}
                     onClick={() => {
                       if (!isConfirming && idx !== weekIndex) {
                         playSfx("scroll", sfxVolume / 100);

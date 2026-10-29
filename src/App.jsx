@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect } from "react";
 import StartScreen from "./components/StartScreen/StartScreen";
 import MainMenu from "./components/MainMenu/MainMenu";
@@ -81,16 +82,18 @@ function AppInner() {
     loadSfx("countdown", countdownSfxAudio);
   }, []);
 
-  // BGM do menu/settings via reconcile (fim das races)
+  // BGM do menu/settings via reconcile (agora dividindo por 100)
   useEffect(() => {
-    const menuVolume =
-      (currentScreen === "settings" ? bgmVolume * 0.35 : bgmVolume) * 0.25;
+    const base =
+      currentScreen === "settings" ? (bgmVolume / 100) * 0.35 : bgmVolume / 100;
+
+    const target = base * 0.25;
 
     const shouldPlayMenu =
       currentScreen === "menu" || currentScreen === "settings";
 
     reconcileBgm(shouldPlayMenu ? "menu" : null, {
-      menu: { url: menuThemeAudio, volume: menuVolume, fadeMs: 400 },
+      menu: { url: menuThemeAudio, volume: target, fadeMs: 400 },
     });
   }, [currentScreen, bgmVolume]);
 
@@ -257,6 +260,7 @@ function AppInner() {
             isDownscroll={isDownscroll}
             keybinds={keybinds}
             bgmVolume={bgmVolume}
+            sfxVolume={sfxVolume} /* ← ADICIONADO */
             audioOffset={audioOffset}
             onPlayerHit={(lane) => setPlayerAnim(LANE_ANIMATIONS[lane])}
             onOpponentHit={(lane) => setOpponentAnim(LANE_ANIMATIONS[lane])}
