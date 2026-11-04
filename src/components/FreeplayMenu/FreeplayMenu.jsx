@@ -23,13 +23,13 @@ export default function FreeplayMenu({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [highScore, setHighScore] = useState(0);
+
   const selectedItemRef = useRef(null);
-  const lastInputRef = useRef("keyboard");
-  const mousePosRef = useRef({ x: 0, y: 0 });
 
   const visibleSongs = ALL_FREEPLAY_SONGS.filter(
     (song) => !song.isSecret || isSecretUnlocked,
   );
+
   const currentSong = visibleSongs[selectedIndex];
   const currentDifficulty = DIFFICULTIES[diffIndex];
 
@@ -45,7 +45,7 @@ export default function FreeplayMenu({
     if (selectedIndex !== -1 && selectedItemRef.current) {
       selectedItemRef.current.scrollIntoView({
         behavior: "smooth",
-        block: "nearest",
+        block: "center",
       });
     }
   }, [selectedIndex]);
@@ -67,7 +67,6 @@ export default function FreeplayMenu({
 
   const changeSong = useCallback(
     (direction) => {
-      lastInputRef.current = "keyboard";
       playSfx("scroll", sfxVolume / 100);
       setSelectedIndex(
         (prev) =>
@@ -79,7 +78,6 @@ export default function FreeplayMenu({
 
   const changeDifficulty = useCallback(
     (direction) => {
-      lastInputRef.current = "keyboard";
       playSfx("scroll", sfxVolume / 100);
       setDiffIndex(
         (prev) =>
@@ -101,20 +99,6 @@ export default function FreeplayMenu({
     },
     [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong],
   );
-
-  const handleMouseMoveItem = (e, index) => {
-    if (
-      e.clientX !== mousePosRef.current.x ||
-      e.clientY !== mousePosRef.current.y
-    ) {
-      mousePosRef.current = { x: e.clientX, y: e.clientY };
-      lastInputRef.current = "mouse";
-      if (selectedIndex !== index) {
-        playSfx("scroll", sfxVolume / 100);
-        setSelectedIndex(index);
-      }
-    }
-  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -170,9 +154,8 @@ export default function FreeplayMenu({
   return (
     <div className="freeplay-container">
       <div className="freeplay-score-box">
-        <div className="score-label">{currentDifficulty}</div>
         <div className="score-display">
-          <div className="score-value">{highScore}</div>
+          {highScore > 0 && <div className="score-value">{highScore}</div>}
           <div className="score-rank" style={{ color: rankColor }}>
             {currentRank}
           </div>
@@ -190,7 +173,7 @@ export default function FreeplayMenu({
         </div>
       </div>
 
-      <div className="freeplay-song-list">
+      <div className="freeplay-list-wrapper">
         {visibleSongs.map((song, index) => {
           const isSelected = index === selectedIndex;
           const displayTitle =
@@ -203,13 +186,26 @@ export default function FreeplayMenu({
               key={song.id}
               ref={isSelected ? selectedItemRef : null}
               className={`freeplay-song-card ${isSelected ? "selected" : ""}`}
-              onMouseMove={(e) => handleMouseMoveItem(e, index)}
               onClick={() => {
-                lastInputRef.current = "mouse";
-                setSelectedIndex(index);
-                handleConfirm(song);
+                // Lógica de confirmação com clique
+                if (selectedIndex === index) {
+                  // Se já está selecionado, clicar de novo inicia o jogo
+                  handleConfirm(song);
+                } else {
+                  // Se não está selecionado, apenas seleciona e toca o som de scroll
+                  playSfx("scroll", sfxVolume / 100);
+                  setSelectedIndex(index);
+                }
               }}
             >
+              <div
+                className="card-bg"
+                style={{
+                  backgroundImage: song.bg ? `url(${song.bg})` : "none",
+                }}
+              />
+              <div className="card-overlay" />
+
               <div className="card-content">
                 <span className="song-title">{displayTitle}</span>
                 {song.icon && (
@@ -225,6 +221,7 @@ export default function FreeplayMenu({
                   </div>
                 )}
               </div>
+
               <div className="card-footer">
                 <span>{durationStr}</span>
                 <span>SFC: {cardSFC}</span>
@@ -233,13 +230,6 @@ export default function FreeplayMenu({
           );
         })}
       </div>
-
-      <footer className="freeplay-footer">
-        <span>
-          [W/S] Escolher &nbsp;|&nbsp; [A/D] Dificuldade &nbsp;|&nbsp; [ENTER]
-          Jogar &nbsp;|&nbsp; [ESC] Voltar
-        </span>
-      </footer>
     </div>
   );
 }
