@@ -53,26 +53,16 @@ export default function SettingsMenu({
   const changeValue = useCallback(
     (direction) => {
       const option = OPTIONS[selectedIndex].id;
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100); // ← ADICIONADO O / 100 AQUI
 
       if (option === "bgm") {
-        setBgmVolume((prev) =>
-          Math.min(
-            1,
-            Math.max(0, parseFloat((prev + direction * 0.1).toFixed(1))),
-          ),
-        );
+        setBgmVolume((prev) => Math.min(100, Math.max(0, prev + direction))); // ← Mudou Math.min(1) para Math.min(100) e removeu o * 0.1
       } else if (option === "sfx") {
-        setSfxVolume((prev) =>
-          Math.min(
-            1,
-            Math.max(0, parseFloat((prev + direction * 0.1).toFixed(1))),
-          ),
-        );
+        setSfxVolume((prev) => Math.min(100, Math.max(0, prev + direction))); // ← Mudou aqui também
       } else if (option === "offset") {
         setAudioOffset((prev) =>
-          Math.min(500, Math.max(-500, prev + direction * 5)),
-        );
+          Math.min(500, Math.max(-500, prev + direction * 10)),
+        ); // ← Mudou * 5 para * 10
       } else if (option === "controls") {
         setKeybinds((prev) => {
           const currentIndex = KEYBIND_PRESETS.indexOf(prev);
@@ -100,23 +90,23 @@ export default function SettingsMenu({
 
   const handleNext = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume);
+    playSfx("scroll", sfxVolume / 100);
     setSelectedIndex((prev) => (prev + 1) % OPTIONS.length);
   }, [OPTIONS.length, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume);
+    playSfx("scroll", sfxVolume / 100);
     setSelectedIndex((prev) => (prev - 1 + OPTIONS.length) % OPTIONS.length);
   }, [OPTIONS.length, sfxVolume]);
 
   const handleConfirm = useCallback(() => {
     const currentId = OPTIONS[selectedIndex].id;
     if (currentId === "back") {
-      playSfx("cancel", sfxVolume);
+      playSfx("cancel", sfxVolume / 100);
       onBack();
     } else {
-      playSfx("select", sfxVolume);
+      playSfx("select", sfxVolume / 100);
       changeValue(1);
     }
   }, [selectedIndex, OPTIONS, onBack, changeValue, sfxVolume]);
@@ -175,12 +165,9 @@ export default function SettingsMenu({
         <div className="option-control">
           <button onClick={() => changeValue(-1)}>◀</button>
           <div className="bar-container">
-            <div
-              className="bar-fill"
-              style={{ width: `${bgmVolume * 100}%` }}
-            />
+            <div className="bar-fill" style={{ width: `${bgmVolume}%` }} />
           </div>
-          <span>{Math.round(bgmVolume * 100)}%</span>
+          <span>{Math.round(bgmVolume)}%</span>
           <button onClick={() => changeValue(1)}>▶</button>
         </div>
       );

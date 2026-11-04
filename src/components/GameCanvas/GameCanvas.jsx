@@ -234,7 +234,8 @@ export default function GameCanvas({
   difficulty,
   isDownscroll = false,
   keybinds = "ARROWS",
-  bgmVolume = 1,
+  bgmVolume = 100, // ← era 1
+  sfxVolume = 100, // ← NOVO (adicionado)
   audioOffset = 0,
   onExit,
   onComplete,
@@ -345,11 +346,11 @@ export default function GameCanvas({
     ];
 
     let currentStepIndex = 0;
-    const sfxVolume = optionsRef.current.bgmVolume ?? 1;
+    const currentSfxVolume = (optionsRef.current.sfxVolume ?? 100) / 100;
 
     isCountingDownRef.current = true;
     setCountdownStep(countdownSteps[0]);
-    playSfx("countdown", sfxVolume);
+    playSfx("countdown", currentSfxVolume);
 
     countdownIntervalRef.current = setInterval(() => {
       currentStepIndex += 1;
@@ -427,7 +428,7 @@ export default function GameCanvas({
       if (cancelled) return;
       setIsLoading(false);
       runCountdownSequence(() => {
-        playGameplaySong(optionsRef.current.bgmVolume, 0);
+        playGameplaySong((optionsRef.current.bgmVolume ?? 100) / 100, 0);
       });
     })();
 
@@ -580,7 +581,7 @@ export default function GameCanvas({
         setIsPaused(false);
 
         runCountdownSequence(() => {
-          resumeGameplaySong(optionsRef.current.bgmVolume);
+          resumeGameplaySong((optionsRef.current.bgmVolume ?? 100) / 100, 0);
         });
         return;
       }

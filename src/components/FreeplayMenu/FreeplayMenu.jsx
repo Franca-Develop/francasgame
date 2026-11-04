@@ -58,7 +58,7 @@ export default function FreeplayMenu({
   const changeSong = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setSelectedIndex((prev) => {
         if (prev === -1) {
           return direction > 0 ? 0 : visibleSongs.length - 1;
@@ -72,7 +72,7 @@ export default function FreeplayMenu({
   const changeDifficulty = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setDiffIndex(
         (prev) =>
           (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
@@ -89,7 +89,7 @@ export default function FreeplayMenu({
 
       if (!selectedSong) return;
 
-      playSfx("select", sfxVolume, 1.1);
+      playSfx("select", (sfxVolume / 100) * 1.1);
       if (onStartSong) {
         onStartSong({
           ...selectedSong,
@@ -110,7 +110,7 @@ export default function FreeplayMenu({
       lastInputRef.current = "mouse";
 
       if (selectedIndex !== index) {
-        playSfx("scroll", sfxVolume);
+        playSfx("scroll", sfxVolume / 100);
         setSelectedIndex(index);
       }
     }
@@ -144,12 +144,12 @@ export default function FreeplayMenu({
           handleConfirm();
           break;
         case "7":
-          playSfx("select", sfxVolume);
+          playSfx("select", sfxVolume / 100);
           if (onToggleSecret) onToggleSecret();
           break;
         case "Escape":
         case "Backspace":
-          playSfx("cancel", sfxVolume);
+          playSfx("cancel", sfxVolume / 100);
           if (onBack) onBack();
           break;
         default:

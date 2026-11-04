@@ -5,7 +5,7 @@
   height: 100vh;
   background-color: #000;
   color: #fff;
-  font-family: "Impact", "Arial Black", sans-serif;
+  font-family: "Rajdhani", sans-serif;
   user-select: none;
   overflow: hidden;
 }
@@ -25,15 +25,15 @@
   color: #fff;
 }
 
-/* Área vermelha central reservada para personagens */
+/* Área colorida central (banner da week) */
 .story-banner-container {
   flex: 1;
-  background-color: #d41a3c;
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  transition: background-color 0.3s ease;
 }
 
 .character-canvas-placeholder {
@@ -67,6 +67,7 @@
   color: #ff0055;
   font-size: 1.3rem;
   letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .tracks-list {
@@ -81,26 +82,71 @@
   margin-bottom: 2px;
 }
 
-/* Título da Semana */
+/* ============================================
+   Carrossel de Weeks
+   ============================================ */
+
 .week-title-column {
-  flex: 0 0 auto;
+  flex: 0 0 300px;
   text-align: center;
 }
 
-.week-title {
-  font-size: 4rem;
-  margin: 0;
-  letter-spacing: 4px;
-  color: #fff;
-  transition: transform 0.1s ease;
+.weeks-carousel-viewport {
+  height: 160px; /* 2 itens × 80px */
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
 
-.week-title.confirming {
-  color: #00e5ff;
+.weeks-carousel-track {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.week-item {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.week-item.selected {
+  opacity: 1;
+}
+
+.week-item .week-title {
+  font-family: "Permanent Marker", cursive, sans-serif;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  margin: 0;
+  letter-spacing: 3px;
+  color: #fff;
+  transform: scale(1);
+  transition:
+    transform 0.2s ease,
+    text-shadow 0.2s ease;
+  text-shadow: 3px 3px 0px #000;
+}
+
+.week-item.selected .week-title {
+  transform: scale(1.2);
+  text-shadow:
+    4px 4px 0px #000,
+    0 0 20px var(--accent, #00e5ff);
+}
+
+.week-item.selected .week-title.confirming {
   animation: flash 0.15s infinite alternate;
 }
 
-/* Seleção de Dificuldade */
+/* ============================================
+   Dificuldade
+   ============================================ */
+
 .difficulty-column {
   flex: 1;
   display: flex;
@@ -123,21 +169,23 @@
 }
 
 .diff-label {
-  font-size: 2.4rem;
-  width: 180px; /* Substituído min-width por width fixo */
+  font-family: "Permanent Marker", cursive, sans-serif;
+  font-size: 2.2rem;
+  width: 180px;
   display: inline-block;
   text-align: center;
+  letter-spacing: 2px;
 }
 
 .diff-0 {
   color: #00ff66;
-} /* EASY */
+}
 .diff-1 {
   color: #ffde00;
-} /* NORMAL */
+}
 .diff-2 {
   color: #ff0055;
-} /* HARD */
+}
 
 @keyframes flash {
   0% {

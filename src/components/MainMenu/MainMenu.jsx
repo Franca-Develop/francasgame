@@ -26,14 +26,14 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
   const handleNext = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume * 0.8);
+    playSfx("scroll", (sfxVolume / 100) * 0.8);
     setSelectedIndex((prev) => (prev + 1) % MENU_OPTIONS.length);
   }, [isConfirming, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume * 0.8);
+    playSfx("scroll", (sfxVolume / 100) * 0.8);
     setSelectedIndex(
       (prev) => (prev - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length,
     );
@@ -43,7 +43,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    playSfx("select", sfxVolume, 1.1);
+    playSfx("select", (sfxVolume / 100) * 1.1);
 
     const selectedOption = MENU_OPTIONS[selectedIndex].id;
 
@@ -54,7 +54,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
 
   const handleCancel = useCallback(() => {
     if (isConfirming) return;
-    playSfx("cancel", sfxVolume);
+    playSfx("cancel", sfxVolume / 100);
     if (onBack) onBack();
   }, [isConfirming, sfxVolume, onBack]);
 
@@ -64,7 +64,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
       !isConfirming &&
       selectedIndex !== index
     ) {
-      playSfx("scroll", sfxVolume * 0.8);
+      playSfx("scroll", (sfxVolume / 100) * 0.8);
       setSelectedIndex(index);
     }
   };
