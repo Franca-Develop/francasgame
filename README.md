@@ -1,4 +1,4 @@
-# Franca's Rythm Trip
+# Franca's Rhythm Trip
 
 > [!WARNING]
 > Em desenvolvimento
