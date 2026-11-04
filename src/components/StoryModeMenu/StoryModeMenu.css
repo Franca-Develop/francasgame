@@ -195,3 +195,209 @@
     opacity: 0.3;
   }
 }
+.story-container {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  color: #fff;
+  font-family: "Rajdhani", sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+
+.story-header {
+  height: 40px;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  z-index: 10;
+}
+
+.week-score {
+  color: #fff;
+}
+
+/* Área colorida central (banner da week) */
+.story-banner-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.character-canvas-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Painel inferior escuro */
+.story-controls-panel {
+  height: 200px;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 50px;
+  z-index: 10;
+}
+
+/* Músicas */
+.tracks-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tracks-header {
+  color: #ff0055;
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tracks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tracks-list li {
+  color: #ff3377;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+/* ============================================
+   Carrossel de Weeks
+   ============================================ */
+
+.week-title-column {
+  flex: 0 0 400px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+
+.weeks-carousel-viewport {
+  height: 160px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.weeks-carousel-track {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.week-item {
+  height: 80px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  background: transparent;
+}
+
+.week-item.selected {
+  opacity: 1;
+}
+
+.week-item .week-title {
+  font-family: "Permanent Marker", cursive, sans-serif;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  margin: 0;
+  letter-spacing: 3px;
+  color: #fff;
+  transform: scale(1);
+  transition:
+    transform 0.2s ease,
+    text-shadow 0.2s ease;
+  text-shadow: 3px 3px 0px #000;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.week-item.selected .week-title {
+  transform: scale(1.2);
+  text-shadow:
+    4px 4px 0px #000,
+    0 0 20px var(--accent, #00e5ff);
+}
+
+.week-item.selected .week-title.confirming {
+  animation: flash 0.15s infinite alternate;
+}
+
+/* ============================================
+   Dificuldade
+   ============================================ */
+
+.difficulty-column {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.diff-arrow {
+  background: none;
+  border: none;
+  color: #00e5ff;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.diff-arrow:hover {
+  transform: scale(1.2);
+}
+
+.diff-label {
+  font-family: "Permanent Marker", cursive, sans-serif;
+  font-size: 2.2rem;
+  width: 180px;
+  display: inline-block;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.diff-0 {
+  color: #00ff66;
+}
+.diff-1 {
+  color: #ffde00;
+}
+.diff-2 {
+  color: #ff0055;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}

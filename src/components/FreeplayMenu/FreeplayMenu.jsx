@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./FreeplayMenu.css";
 
 import { playSfx } from "../../utils/audioEngine";
-import { getHighScore } from "../../utils/highScoreUtils";
+import { useProgress } from "../../contexts/ProgressContext";
 import { ALL_FREEPLAY_SONGS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
@@ -14,6 +14,8 @@ export default function FreeplayMenu({
   onStartSong,
   onBack,
 }) {
+  const { getSongHighScore } = useProgress();
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [highScore, setHighScore] = useState(0);
@@ -48,7 +50,7 @@ export default function FreeplayMenu({
   // Carrega o High Score gravado no localStorage
   useEffect(() => {
     if (currentSong?.id) {
-      const score = getHighScore(currentSong.id, currentDifficulty);
+      const score = getSongHighScore(currentSong.id, currentDifficulty);
       setHighScore(score || 0);
     } else {
       setHighScore(0);

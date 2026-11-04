@@ -4,12 +4,14 @@
 // SETTINGS
 // ============================================================
 
+// src/utils/migrateStorage.js
+
 const SETTINGS_KEY = "frrt_settings";
-const CURRENT_VERSION = 2; // v2 = escala de volume 0-100
+const CURRENT_VERSION = 2; // ← Bump para 2
 
 const SETTINGS_DEFAULTS = {
-  bgmVolume: 50,
-  sfxVolume: 70,
+  bgmVolume: 50, // ← Era 0.5
+  sfxVolume: 70, // ← Era 0.7
   audioOffset: 0,
   keybinds: "ARROWS",
   isDownscroll: false,
@@ -54,6 +56,7 @@ export function loadSettings() {
         parsed.bgmVolume = Math.round((parsed.bgmVolume || 0.5) * 100);
         parsed.sfxVolume = Math.round((parsed.sfxVolume || 0.7) * 100);
         parsed.version = 2;
+        // Persiste imediatamente para não migrar de novo no próximo load
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
       }
 
@@ -66,9 +69,18 @@ export function loadSettings() {
 
   // 2. Migra do legado
   const migrated = {
-    bgmVolume: Math.round(safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.bgmVolume), 0.5) * 100),
-    sfxVolume: Math.round(safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.sfxVolume), 0.7) * 100),
-    audioOffset: safeParseInt(localStorage.getItem(LEGACY_SETTINGS_KEYS.audioOffset), SETTINGS_DEFAULTS.audioOffset),
+    bgmVolume: Math.round(
+      safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.bgmVolume), 0.5) *
+        100,
+    ),
+    sfxVolume: Math.round(
+      safeParseNum(localStorage.getItem(LEGACY_SETTINGS_KEYS.sfxVolume), 0.7) *
+        100,
+    ),
+    audioOffset: safeParseInt(
+      localStorage.getItem(LEGACY_SETTINGS_KEYS.audioOffset),
+      SETTINGS_DEFAULTS.audioOffset,
+    ),
     keybinds: (() => {
       const k = localStorage.getItem(LEGACY_SETTINGS_KEYS.keybinds);
       return VALID_KEYBINDS.includes(k) ? k : SETTINGS_DEFAULTS.keybinds;
@@ -132,13 +144,25 @@ export function loadProgress() {
       return {
         ...PROGRESS_DEFAULTS,
         ...rest,
-        songHighScores: { ...PROGRESS_DEFAULTS.songHighScores, ...(rest.songHighScores || {}) },
-        weekHighScores: { ...PROGRESS_DEFAULTS.weekHighScores, ...(rest.weekHighScores || {}) },
-        completedWeeks: { ...PROGRESS_DEFAULTS.completedWeeks, ...(rest.completedWeeks || {}) },
+        songHighScores: {
+          ...PROGRESS_DEFAULTS.songHighScores,
+          ...(rest.songHighScores || {}),
+        },
+        weekHighScores: {
+          ...PROGRESS_DEFAULTS.weekHighScores,
+          ...(rest.weekHighScores || {}),
+        },
+        completedWeeks: {
+          ...PROGRESS_DEFAULTS.completedWeeks,
+          ...(rest.completedWeeks || {}),
+        },
       };
     }
   } catch (err) {
-    console.warn("[migrateStorage] frrt_progress corrompido, migrando de legado", err);
+    console.warn(
+      "[migrateStorage] frrt_progress corrompido, migrando de legado",
+      err,
+    );
   }
 
   // 2. Migra fnf_highscores -> songHighScores
@@ -182,17 +206,25 @@ export function loadProgress() {
   try {
     localStorage.setItem(
       PROGRESS_KEY,
-      JSON.stringify({ ...migrated, version: PROGRESS_VERSION })
+      JSON.stringify({ ...migrated, version: PROGRESS_VERSION }),
     );
   } catch (err) {
     console.warn("[migrateStorage] Falha ao salvar frrt_progress", err);
     return migrated;
   }
 
-  // 5. Remove legados
-  try { localStorage.removeItem(LEGACY_SONG_SCORES_KEY); } catch { /* noop */ }
+  // 5. Remove legados (só se persistiu)
+  try {
+    localStorage.removeItem(LEGACY_SONG_SCORES_KEY);
+  } catch {
+    /* noop */
+  }
   legacyWeekKeys.forEach((key) => {
-    try { localStorage.removeItem(key); } catch { /* noop */ }
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* noop */
+    }
   });
 
   return migrated;
@@ -202,7 +234,7 @@ export function persistProgress(progress) {
   try {
     localStorage.setItem(
       PROGRESS_KEY,
-      JSON.stringify({ ...progress, version: PROGRESS_VERSION })
+      JSON.stringify({ ...progress, version: PROGRESS_VERSION }),
     );
   } catch (err) {
     console.warn("[migrateStorage] Falha ao persistir progress", err);

@@ -234,8 +234,8 @@ export default function GameCanvas({
   difficulty,
   isDownscroll = false,
   keybinds = "ARROWS",
-  bgmVolume = 100, // ← era 1
-  sfxVolume = 100, // ← NOVO (adicionado)
+  bgmVolume = 100,
+  sfxVolume = 100,
   audioOffset = 0,
   onExit,
   onComplete,
@@ -581,7 +581,7 @@ export default function GameCanvas({
         setIsPaused(false);
 
         runCountdownSequence(() => {
-          resumeGameplaySong((optionsRef.current.bgmVolume ?? 100) / 100, 0);
+          resumeGameplaySong((optionsRef.current.bgmVolume ?? 100) / 100);
         });
         return;
       }

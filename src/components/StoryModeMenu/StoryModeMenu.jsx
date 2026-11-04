@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
 import { playSfx } from "../../utils/audioEngine";
-import { getWeekHighScore } from "../../utils/highScoreUtils";
+import { useProgress } from "../../contexts/ProgressContext";
 import { WEEKS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
 export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
+  const { getWeekHighScore } = useProgress();
+
   const [weekIndex, setWeekIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -45,7 +47,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    playSfx("select", (sfxVolume / 100) * 1.1);
+    playSfx("select", sfxVolume / 100, 1.1);
     playSfx("yeah", (sfxVolume / 100) * 1.1, 1.0);
 
     setTimeout(() => {
@@ -111,10 +113,9 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       <header className="story-header">
         <span className="week-score">WEEK SCORE: {weekScore}</span>
       </header>
-
       <main
         className="story-banner-container"
-        style={{ backgroundColor: currentWeek?.theme?.bg || "#9e28d9" }}
+        style={{ backgroundColor: currentWeek?.theme?.bg || "#af0ccf" }}
       >
         <div className="character-canvas-placeholder" />
       </main>
@@ -146,7 +147,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
                   <div
                     key={week.id || idx}
                     className={`week-item ${isSelected ? "selected" : ""}`}
-                    style={{ "--accent": week.theme?.accent || "#c76de2" }}
+                    style={{ "--accent": week.theme?.accent || "#de5ae2" }}
                     onClick={() => {
                       if (!isConfirming && idx !== weekIndex) {
                         playSfx("scroll", sfxVolume / 100);

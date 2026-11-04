@@ -41,10 +41,7 @@ export const WEEKS = [
   {
     id: "tutorial",
     title: "TUTORIAL",
-    theme: {
-      bg: "#999999",
-      accent: "#EEEEEE"
-    },
+    theme: { bg: "#444444", accent: "#AAAAAA" },
     songs: [
       {
         id: "test-song",
@@ -60,10 +57,7 @@ export const WEEKS = [
   {
     id: "week-1",
     title: "WEEK 1",
-    theme: {
-      bg: "#FFDE00",
-      accent: "#DDCE00"
-    },
+    theme: { bg: "#FFDE00", accent: "#FFCC00" },
     songs: [
       {
         id: "lets-go-gambling",
@@ -97,10 +91,7 @@ export const WEEKS = [
   {
     id: "week-2",
     title: "WEEK 2",
-    theme: {
-      bg: "#DD0055",
-      accent: "#FF0055"
-    },
+    theme: { bg: "#FF0055", accent: "#FF0077" },
     songs: [
       {
         id: "green-entry",
@@ -134,10 +125,7 @@ export const WEEKS = [
   {
     id: "week-3",
     title: "WEEK 3",
-    theme: {
-      bg: "#1155FF",
-      accent: "#1122FF"
-    },
+    theme: { bg: "#0033FF", accent: "#0088FF" },
     songs: [
       {
         id: "first-encounter",
