@@ -125,7 +125,7 @@ export const WEEKS = [
   {
     id: "week-3",
     title: "WEEK 3",
-    theme: { bg: "#0033FF", accent: "#0088FF" },
+    theme: { bg: "#2e56f2", accent: "#0088FF" },
     songs: [
       {
         id: "first-encounter",
