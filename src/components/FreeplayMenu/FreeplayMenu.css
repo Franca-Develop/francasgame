@@ -183,7 +183,7 @@
 .freeplay-song-card.selected .card-overlay {
   background: linear-gradient(
     to right,
-    rgba(0, 229, 255, 0.2) 0%,
+    rgba(211, 215, 215, 0.2) 0%,
     rgba(0, 0, 0, 0.6) 100%
   );
 }
