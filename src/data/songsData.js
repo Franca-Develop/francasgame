@@ -50,6 +50,8 @@ export const WEEKS = [
         opponentChart: testSongChart,
         audio: testSongAudio,
         bg: tutorialBg,
+        duration: 30,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -66,6 +68,8 @@ export const WEEKS = [
         opponentChart: letsGoGamblingChartOpponent,
         audio: letsGoGamblingSongAudio,
         bg: letsGoGamblingBg,
+        duration: 96,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -75,6 +79,8 @@ export const WEEKS = [
         opponentChart: partyChaosChartOpponent,
         audio: partyChaosSongAudio,
         bg: letsGoGamblingBg,
+        duration: 165,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -84,6 +90,8 @@ export const WEEKS = [
         opponentChart: letsGoGamblingChartOpponent,
         audio: dontDealWithMeSongAudio,
         bg: letsGoGamblingBg,
+        duration: 181,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -100,6 +108,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: greenEntrySongAudio,
         bg: fightOrFlightBg,
+        duration: 108,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -109,6 +119,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: fightOrFlightSongAudio,
         bg: fightOrFlightBg,
+        duration: 132,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -118,6 +130,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: noMercySongAudio,
         bg: fightOrFlightBg,
+        duration: 168,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -134,6 +148,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: firstEncounterSongAudio,
         bg: castleChorusBg,
+        duration: 119,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -143,6 +159,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: meatGrinderSongAudio,
         bg: castleChorusBg,
+        duration: 152,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -152,6 +170,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: castleChorusSongAudio,
         bg: castleChorusBg,
+        duration: 180,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -166,6 +186,8 @@ export const SECRET_SONGS = [
     opponentChart: lastStopChartOpponent,
     audio: lastStopSongAudio,
     bg: lastStopBg,
+    duration: 344,
+    speed: 1.0,
     isSecret: true,
     // sprite: "opponent-sprite-path",
   },

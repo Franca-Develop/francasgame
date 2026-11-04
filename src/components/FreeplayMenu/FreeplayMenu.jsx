@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./FreeplayMenu.css";
-
 import { playSfx } from "../../utils/audioEngine";
 import { useProgress } from "../../contexts/ProgressContext";
 import { ALL_FREEPLAY_SONGS } from "../../data/songsData";
+import {
+  calculateSFC,
+  calculateRank,
+  getRankColor,
+  formatDuration,
+} from "../../utils/scoreUtils";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
@@ -15,27 +20,25 @@ export default function FreeplayMenu({
   onBack,
 }) {
   const { getSongHighScore } = useProgress();
-
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [highScore, setHighScore] = useState(0);
   const selectedItemRef = useRef(null);
-
   const lastInputRef = useRef("keyboard");
   const mousePosRef = useRef({ x: 0, y: 0 });
 
-  // Filtra músicas secretas usando ALL_FREEPLAY_SONGS do songsData.js
   const visibleSongs = ALL_FREEPLAY_SONGS.filter(
     (song) => !song.isSecret || isSecretUnlocked,
   );
-
   const currentSong = visibleSongs[selectedIndex];
   const currentDifficulty = DIFFICULTIES[diffIndex];
 
+  const currentSFC = currentSong ? calculateSFC(currentSong) : 0;
+  const currentRank = calculateRank(highScore, currentSFC);
+  const rankColor = getRankColor(currentRank);
+
   useEffect(() => {
-    if (selectedIndex >= visibleSongs.length) {
-      setSelectedIndex(0);
-    }
+    if (selectedIndex >= visibleSongs.length) setSelectedIndex(0);
   }, [visibleSongs.length, selectedIndex]);
 
   useEffect(() => {
@@ -47,26 +50,29 @@ export default function FreeplayMenu({
     }
   }, [selectedIndex]);
 
-  // Carrega o High Score gravado no localStorage
   useEffect(() => {
     if (currentSong?.id) {
-      const score = getSongHighScore(currentSong.id, currentDifficulty);
-      setHighScore(score || 0);
+      setHighScore(getSongHighScore(currentSong.id, currentDifficulty) || 0);
     } else {
       setHighScore(0);
     }
-  }, [selectedIndex, diffIndex, visibleSongs, currentSong, currentDifficulty]);
+  }, [
+    selectedIndex,
+    diffIndex,
+    visibleSongs,
+    currentSong,
+    currentDifficulty,
+    getSongHighScore,
+  ]);
 
   const changeSong = useCallback(
     (direction) => {
       lastInputRef.current = "keyboard";
       playSfx("scroll", sfxVolume / 100);
-      setSelectedIndex((prev) => {
-        if (prev === -1) {
-          return direction > 0 ? 0 : visibleSongs.length - 1;
-        }
-        return (prev + direction + visibleSongs.length) % visibleSongs.length;
-      });
+      setSelectedIndex(
+        (prev) =>
+          (prev + direction + visibleSongs.length) % visibleSongs.length,
+      );
     },
     [sfxVolume, visibleSongs.length],
   );
@@ -88,29 +94,21 @@ export default function FreeplayMenu({
       const selectedSong =
         songToPlay ||
         (selectedIndex !== -1 ? visibleSongs[selectedIndex] : null);
-
       if (!selectedSong) return;
-
       playSfx("select", (sfxVolume / 100) * 1.1);
-      if (onStartSong) {
-        onStartSong({
-          ...selectedSong,
-          difficulty: DIFFICULTIES[diffIndex],
-        });
-      }
+      if (onStartSong)
+        onStartSong({ ...selectedSong, difficulty: DIFFICULTIES[diffIndex] });
     },
     [selectedIndex, visibleSongs, diffIndex, sfxVolume, onStartSong],
   );
 
   const handleMouseMoveItem = (e, index) => {
-    const hasMoved =
+    if (
       e.clientX !== mousePosRef.current.x ||
-      e.clientY !== mousePosRef.current.y;
-
-    if (hasMoved) {
+      e.clientY !== mousePosRef.current.y
+    ) {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
       lastInputRef.current = "mouse";
-
       if (selectedIndex !== index) {
         playSfx("scroll", sfxVolume / 100);
         setSelectedIndex(index);
@@ -158,7 +156,6 @@ export default function FreeplayMenu({
           break;
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
@@ -173,8 +170,13 @@ export default function FreeplayMenu({
   return (
     <div className="freeplay-container">
       <div className="freeplay-score-box">
-        <div className="score-label">HIGH SCORE</div>
-        <div className="score-value">{highScore}</div>
+        <div className="score-label">{currentDifficulty}</div>
+        <div className="score-display">
+          <div className="score-value">{highScore}</div>
+          <div className="score-rank" style={{ color: rankColor }}>
+            {currentRank}
+          </div>
+        </div>
         <div className="diff-selector">
           <button type="button" onClick={() => changeDifficulty(-1)}>
             ◀
@@ -193,6 +195,8 @@ export default function FreeplayMenu({
           const isSelected = index === selectedIndex;
           const displayTitle =
             song.title || song.id.replace(/-/g, " ").toUpperCase();
+          const cardSFC = calculateSFC(song);
+          const durationStr = formatDuration(song.duration || 0);
 
           return (
             <div
@@ -206,20 +210,25 @@ export default function FreeplayMenu({
                 handleConfirm(song);
               }}
             >
-              <span className="song-title">{displayTitle}</span>
-
-              {song.icon && (
-                <div className="icon-wrapper">
-                  <img
-                    src={song.icon}
-                    alt={displayTitle}
-                    className="song-icon"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                </div>
-              )}
+              <div className="card-content">
+                <span className="song-title">{displayTitle}</span>
+                {song.icon && (
+                  <div className="icon-wrapper">
+                    <img
+                      src={song.icon}
+                      alt={displayTitle}
+                      className="song-icon"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="card-footer">
+                <span>{durationStr}</span>
+                <span>SFC: {cardSFC}</span>
+              </div>
             </div>
           );
         })}
@@ -227,8 +236,8 @@ export default function FreeplayMenu({
 
       <footer className="freeplay-footer">
         <span>
-          [W/S] Escolher Música &nbsp;|&nbsp; [A/D] Dificuldade &nbsp;|&nbsp;
-          [ENTER] Jogar &nbsp;|&nbsp; [ESC] Voltar
+          [W/S] Escolher &nbsp;|&nbsp; [A/D] Dificuldade &nbsp;|&nbsp; [ENTER]
+          Jogar &nbsp;|&nbsp; [ESC] Voltar
         </span>
       </footer>
     </div>
