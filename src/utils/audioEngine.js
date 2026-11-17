@@ -1,21 +1,27 @@
 // src/utils/audioEngine.js
-// ÚNICO AudioContext do projeto. Todos os áudios passam por aqui.
+// ÚNICO AudioContext do projeto. Criação adiada até o primeiro gesto válido
+// pra respeitar a política de autoplay (zero avisos no console).
 
 let ctx = null;
 let masterGain = null;
 let sfxMasterGain = null;
 let musicMasterGain = null;
-let autoplayUnlockInstalled = false;
+
+let isUnlocked = false;
+let unlockResolve = null;
+const unlockReady = new Promise((resolve) => {
+  unlockResolve = resolve;
+});
 
 const sfxBuffers = new Map();
 const activeSfx = new Set();
 const loopedMusic = new Map();
-
-// Guarda chamadas em andamento — evita double-play em StrictMode / concorrência
 const pendingSfx = new Map();
 const pendingLooped = new Map();
+const cancelledLooped = new Set();
 
-function getCtx() {
+// ---------- Init ----------
+function ensureCtxExists() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ctx.createGain();
@@ -28,8 +34,43 @@ function getCtx() {
   return ctx;
 }
 
+// Espera o unlock antes de criar — usado só por funções async
+async function waitForUnlock() {
+  await unlockReady;
+  return ensureCtxExists();
+}
+
+// ---------- Autoplay unlock ----------
+// Instalado no import do módulo (antes de qualquer componente montar),
+// garantindo que o primeiro gesto do usuário destrave o áudio.
+if (typeof window !== "undefined") {
+  const unlock = async () => {
+    if (isUnlocked) return;
+    try {
+      const context = ensureCtxExists();
+      if (context.state === "suspended") {
+        await context.resume();
+      }
+      isUnlocked = true;
+      unlockResolve();
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchend", unlock);
+    } catch {
+      // Se o resume falhar, mantém os listeners pro próximo gesto
+    }
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
+  window.addEventListener("touchend", unlock);
+}
+
+export function installAutoplayUnlock() {
+  // Mantido por compatibilidade — listeners já foram instalados no import.
+}
+
 export async function ensureAudioRunning() {
-  const c = getCtx();
+  const c = await waitForUnlock();
   if (c.state === "suspended") {
     try {
       await c.resume();
@@ -38,16 +79,6 @@ export async function ensureAudioRunning() {
     }
   }
   return c;
-}
-
-export function installAutoplayUnlock() {
-  if (autoplayUnlockInstalled) return;
-  autoplayUnlockInstalled = true;
-  const unlock = () => {
-    ensureAudioRunning();
-  };
-  window.addEventListener("pointerdown", unlock);
-  window.addEventListener("keydown", unlock);
 }
 
 // ---------- Volume (master) ----------
@@ -67,9 +98,11 @@ export async function loadSfx(name, url) {
 
   const promise = (async () => {
     try {
-      const c = await ensureAudioRunning();
+      // fetch + arrayBuffer NÃO precisam do contexto — podem rodar cedo
       const res = await fetch(url);
       const arr = await res.arrayBuffer();
+      // decode só depois do unlock (evita aviso)
+      const c = await waitForUnlock();
       sfxBuffers.set(name, await c.decodeAudioData(arr));
     } catch (err) {
       console.error(`[audioEngine] Erro carregando SFX "${name}":`, err);
@@ -83,9 +116,11 @@ export async function loadSfx(name, url) {
 }
 
 export function playSfx(name, volume = 1, rate = 1) {
+  // Antes do unlock, o buffer pode nem existir; no-op silencioso
+  if (!isUnlocked) return;
   const buffer = sfxBuffers.get(name);
   if (!buffer) return;
-  const c = getCtx();
+  const c = ensureCtxExists();
   const source = c.createBufferSource();
   const gain = c.createGain();
   source.buffer = buffer;
@@ -113,8 +148,8 @@ export function stopAllSfx() {
 
 // ---------- Looped Music ----------
 function adjustLoopedVolume(track, volume, fadeMs) {
-  const c = getCtx();
-  const now = c.currentTime;
+  if (!ctx) return;
+  const now = ctx.currentTime;
   const target = Math.max(0.0001, volume);
   track.gain.gain.cancelScheduledValues(now);
   track.gain.gain.setValueAtTime(track.gain.gain.value, now);
@@ -122,14 +157,14 @@ function adjustLoopedVolume(track, volume, fadeMs) {
 }
 
 export async function playLoopedMusic({ id, url, volume = 1, fadeMs = 0 }) {
-  // 1. Já tocando com mesma URL? Só ajusta volume.
+  cancelledLooped.delete(id);
+
   const existing = loopedMusic.get(id);
   if (existing && existing.url === url) {
     adjustLoopedVolume(existing, volume, fadeMs);
     return;
   }
 
-  // 2. Já está carregando? Aguarda e ajusta (evita StrictMode double-play).
   if (pendingLooped.has(id)) {
     try {
       await pendingLooped.get(id);
@@ -144,18 +179,20 @@ export async function playLoopedMusic({ id, url, volume = 1, fadeMs = 0 }) {
     if (loaded) stopLoopedMusic(id);
   }
 
-  // 3. Para o antigo se id tem URL diferente
   if (loopedMusic.has(id)) stopLoopedMusic(id);
 
-  // 4. Carrega e toca
   const promise = (async () => {
     try {
-      const c = await ensureAudioRunning();
+      const c = await waitForUnlock();
       const res = await fetch(url);
       const arr = await res.arrayBuffer();
       const buffer = await c.decodeAudioData(arr);
 
-      // Re-checa: se durante o fetch alguém já iniciou, evita duplicar.
+      if (cancelledLooped.has(id)) {
+        cancelledLooped.delete(id);
+        return;
+      }
+
       const nowExisting = loopedMusic.get(id);
       if (nowExisting && nowExisting.url === url) {
         adjustLoopedVolume(nowExisting, volume, fadeMs);
@@ -200,10 +237,10 @@ export async function playLoopedMusic({ id, url, volume = 1, fadeMs = 0 }) {
 }
 
 export function fadeOutLoopedMusic(id, ms = 400) {
+  if (pendingLooped.has(id)) cancelledLooped.add(id);
   const track = loopedMusic.get(id);
-  if (!track) return;
-  const c = getCtx();
-  const now = c.currentTime;
+  if (!track || !ctx) return;
+  const now = ctx.currentTime;
   track.gain.gain.cancelScheduledValues(now);
   track.gain.gain.setValueAtTime(track.gain.gain.value, now);
   track.gain.gain.linearRampToValueAtTime(0.0001, now + ms / 1000);
@@ -216,6 +253,7 @@ export function fadeOutLoopedMusic(id, ms = 400) {
 }
 
 export function stopLoopedMusic(id) {
+  if (pendingLooped.has(id)) cancelledLooped.add(id);
   const track = loopedMusic.get(id);
   if (!track) return;
   try {
@@ -241,8 +279,25 @@ export function stopAllLoopedMusic(ms = 0) {
   }
 }
 
-// ---------- Gameplay Song (não-loop, posição precisa) ----------
+// ---------- BGM Reconciler ----------
+export function reconcileBgm(activeId, tracks) {
+  if (!tracks || typeof tracks !== "object") return;
+  Object.entries(tracks).forEach(([id, cfg]) => {
+    if (!cfg || !cfg.url) return;
+    if (id === activeId) {
+      playLoopedMusic({
+        id,
+        url: cfg.url,
+        volume: cfg.volume ?? 1,
+        fadeMs: cfg.fadeMs ?? 400,
+      });
+    } else {
+      fadeOutLoopedMusic(id, cfg.fadeMs ?? 400);
+    }
+  });
+}
 
+// ---------- Gameplay Song (não-loop) ----------
 let gameplayBuffer = null;
 let gameplayBufferUrl = null;
 let gameplaySource = null;
@@ -260,9 +315,9 @@ export async function loadGameplaySong({ id, url }) {
 
   const promise = (async () => {
     try {
-      const c = await ensureAudioRunning();
       const res = await fetch(url);
       const arr = await res.arrayBuffer();
+      const c = await waitForUnlock();
       const buffer = await c.decodeAudioData(arr);
       gameplayBuffer = buffer;
       gameplayBufferUrl = url;
@@ -279,22 +334,23 @@ export async function loadGameplaySong({ id, url }) {
 }
 
 export function playGameplaySong(volume = 1, offsetMs = 0) {
-  if (!gameplayBuffer) {
-    console.warn("[audioEngine] playGameplaySong: buffer não carregado");
+  if (!gameplayBuffer || !ctx) {
+    console.warn("[audioEngine] playGameplaySong: buffer/contexto não pronto");
     return false;
   }
-  const c = getCtx();
 
   if (gameplaySource) {
     try {
       gameplaySource.onended = null;
       gameplaySource.stop();
-    } catch {}
+    } catch {
+      /* noop */
+    }
     gameplaySource = null;
   }
 
-  gameplaySource = c.createBufferSource();
-  gameplayGain = c.createGain();
+  gameplaySource = ctx.createBufferSource();
+  gameplayGain = ctx.createGain();
   gameplaySource.buffer = gameplayBuffer;
   gameplaySource.loop = false;
   gameplayGain.gain.value = Math.max(0, Math.min(1, volume));
@@ -303,7 +359,7 @@ export function playGameplaySong(volume = 1, offsetMs = 0) {
 
   const offsetSec = Math.max(0, offsetMs / 1000);
   gameplaySource.start(0, offsetSec);
-  gameplayStartTime = c.currentTime - offsetSec;
+  gameplayStartTime = ctx.currentTime - offsetSec;
   gameplayIsPlaying = true;
 
   gameplaySource.onended = () => {
@@ -323,14 +379,15 @@ export function playGameplaySong(volume = 1, offsetMs = 0) {
 }
 
 export function pauseGameplaySong() {
-  if (!gameplayIsPlaying || !gameplaySource) return;
-  const c = getCtx();
-  gameplayPauseOffset = c.currentTime - gameplayStartTime;
+  if (!gameplayIsPlaying || !gameplaySource || !ctx) return;
+  gameplayPauseOffset = ctx.currentTime - gameplayStartTime;
   gameplayIsPlaying = false;
   try {
     gameplaySource.onended = null;
     gameplaySource.stop();
-  } catch {}
+  } catch {
+    /* noop */
+  }
   gameplaySource = null;
 }
 
@@ -345,7 +402,9 @@ export function stopGameplaySong() {
     try {
       gameplaySource.onended = null;
       gameplaySource.stop();
-    } catch {}
+    } catch {
+      /* noop */
+    }
     gameplaySource = null;
   }
   gameplayIsPlaying = false;

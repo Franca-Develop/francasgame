@@ -41,6 +41,7 @@ export const WEEKS = [
   {
     id: "tutorial",
     title: "TUTORIAL",
+    theme: { bg: "#444444", accent: "#AAAAAA" },
     songs: [
       {
         id: "test-song",
@@ -49,6 +50,8 @@ export const WEEKS = [
         opponentChart: testSongChart,
         audio: testSongAudio,
         bg: tutorialBg,
+        duration: 30,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -56,6 +59,7 @@ export const WEEKS = [
   {
     id: "week-1",
     title: "WEEK 1",
+    theme: { bg: "#FFDE00", accent: "#FFCC00" },
     songs: [
       {
         id: "lets-go-gambling",
@@ -64,6 +68,8 @@ export const WEEKS = [
         opponentChart: letsGoGamblingChartOpponent,
         audio: letsGoGamblingSongAudio,
         bg: letsGoGamblingBg,
+        duration: 96,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -73,6 +79,8 @@ export const WEEKS = [
         opponentChart: partyChaosChartOpponent,
         audio: partyChaosSongAudio,
         bg: letsGoGamblingBg,
+        duration: 165,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -82,6 +90,8 @@ export const WEEKS = [
         opponentChart: letsGoGamblingChartOpponent,
         audio: dontDealWithMeSongAudio,
         bg: letsGoGamblingBg,
+        duration: 181,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -89,6 +99,7 @@ export const WEEKS = [
   {
     id: "week-2",
     title: "WEEK 2",
+    theme: { bg: "#FF0055", accent: "#FF0077" },
     songs: [
       {
         id: "green-entry",
@@ -97,6 +108,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: greenEntrySongAudio,
         bg: fightOrFlightBg,
+        duration: 108,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -106,6 +119,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: fightOrFlightSongAudio,
         bg: fightOrFlightBg,
+        duration: 132,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -115,6 +130,8 @@ export const WEEKS = [
         opponentChart: fightOrFlightChartOpponent,
         audio: noMercySongAudio,
         bg: fightOrFlightBg,
+        duration: 168,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -122,6 +139,7 @@ export const WEEKS = [
   {
     id: "week-3",
     title: "WEEK 3",
+    theme: { bg: "#2e56f2", accent: "#0088FF" },
     songs: [
       {
         id: "first-encounter",
@@ -130,6 +148,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: firstEncounterSongAudio,
         bg: castleChorusBg,
+        duration: 119,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -139,6 +159,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: meatGrinderSongAudio,
         bg: castleChorusBg,
+        duration: 152,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
       {
@@ -148,6 +170,8 @@ export const WEEKS = [
         opponentChart: castleChorusChartOpponent,
         audio: castleChorusSongAudio,
         bg: castleChorusBg,
+        duration: 180,
+        speed: 1.0
         // sprite: "opponent-sprite-path",
       },
     ],
@@ -162,6 +186,8 @@ export const SECRET_SONGS = [
     opponentChart: lastStopChartOpponent,
     audio: lastStopSongAudio,
     bg: lastStopBg,
+    duration: 344,
+    speed: 1.0,
     isSecret: true,
     // sprite: "opponent-sprite-path",
   },

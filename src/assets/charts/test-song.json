@@ -2,7 +2,6 @@
   "song": {
     "title": "10s Quick Test",
     "bpm": 120,
-    "speed": 1.5,
     "notes": [
       {
         "time": 1500,

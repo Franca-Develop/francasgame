@@ -74,15 +74,19 @@
   opacity: 1;
 }
 
-/* Cortina preta estilo transição de PowerPoint que sobe cobrindo tudo */
 .wipe-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: #000000;
-  transform: translateY(100%); /* Escondido abaixo da tela */
+  background: linear-gradient(
+    to top,
+    #000000 0%,
+    #000000 75%,
+    transparent 100%
+  );
+  transform: translateY(100%);
   z-index: 99;
   pointer-events: none;
 }

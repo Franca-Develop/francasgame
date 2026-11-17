@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./SettingsMenu.css";
-
-// Importa o utilitário de SFX com latência zero
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 
 const KEYBIND_PRESETS = ["ARROWS", "WASD", "DFJK"];
 
@@ -21,7 +19,9 @@ export default function SettingsMenu({
 }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const lastInputRef = useRef("keyboard");
-  const selectedItemRef = useRef(null);
+
+  const holdTimerRef = useRef(null);
+  const holdCountRef = useRef(0);
 
   const OPTIONS = [
     { id: "bgm", label: "MUSIC" },
@@ -40,131 +40,150 @@ export default function SettingsMenu({
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Efeito para rolar suavemente a tela acompanhando a seleção
   useEffect(() => {
-    if (selectedItemRef.current) {
-      selectedItemRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+    const selectedEl = document.querySelector(`.option-row.selected`);
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [selectedIndex]);
 
   const changeValue = useCallback(
-    (direction) => {
+    (direction, multiplier = 1) => {
       const option = OPTIONS[selectedIndex].id;
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
 
       if (option === "bgm") {
-        setBgmVolume((prev) =>
-          Math.min(
-            1,
-            Math.max(0, parseFloat((prev + direction * 0.1).toFixed(1))),
-          ),
-        );
+        setBgmVolume((prev) => Math.min(100, Math.max(0, prev + direction * multiplier)));
       } else if (option === "sfx") {
-        setSfxVolume((prev) =>
-          Math.min(
-            1,
-            Math.max(0, parseFloat((prev + direction * 0.1).toFixed(1))),
-          ),
-        );
+        setSfxVolume((prev) => Math.min(100, Math.max(0, prev + direction * multiplier)));
       } else if (option === "offset") {
-        setAudioOffset((prev) =>
-          Math.min(500, Math.max(-500, prev + direction * 5)),
-        );
+        setAudioOffset((prev) => Math.min(500, Math.max(-500, prev + direction * multiplier)));
       } else if (option === "controls") {
+        if (multiplier > 1) return;
         setKeybinds((prev) => {
           const currentIndex = KEYBIND_PRESETS.indexOf(prev);
           const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-          const nextIndex =
-            (safeIndex + direction + KEYBIND_PRESETS.length) %
-            KEYBIND_PRESETS.length;
+          const nextIndex = (safeIndex + direction + KEYBIND_PRESETS.length) % KEYBIND_PRESETS.length;
           return KEYBIND_PRESETS[nextIndex];
         });
       } else if (option === "scroll") {
+        if (multiplier > 1) return;
         setIsDownscroll((prev) => !prev);
       }
     },
-    [
-      selectedIndex,
-      OPTIONS,
-      sfxVolume,
-      setBgmVolume,
-      setSfxVolume,
-      setAudioOffset,
-      setKeybinds,
-      setIsDownscroll,
-    ],
+    [selectedIndex, OPTIONS, sfxVolume, setBgmVolume, setSfxVolume, setAudioOffset, setKeybinds, setIsDownscroll]
   );
+
+  // 1. stopAcceleration é declarada ANTES para ser usada no start
+  const stopAcceleration = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    holdCountRef.current = 0;
+  }, []);
+
+  const startAcceleration = useCallback(
+    (direction) => {
+      // 2. AQUI ESTÁ A CORREÇÃO: Mata o timer antigo antes de começar um novo
+      stopAcceleration(); 
+
+      changeValue(direction, 1);
+      holdCountRef.current = 1;
+
+      const tick = () => {
+        holdCountRef.current += 1;
+        let multiplier = 1;
+        if (holdCountRef.current > 15) multiplier = 10;
+        else if (holdCountRef.current > 5) multiplier = 5;
+
+        changeValue(direction, multiplier);
+        holdTimerRef.current = setTimeout(tick, 80);
+      };
+
+      holdTimerRef.current = setTimeout(tick, 400);
+    },
+    [changeValue, stopAcceleration]
+  );
+
+  // 3. CORREÇÃO DE SEGURANÇA: Se a janela perder o foco, para de acelerar
+  useEffect(() => {
+    window.addEventListener("blur", stopAcceleration);
+    return () => {
+      stopAcceleration();
+      window.removeEventListener("blur", stopAcceleration);
+    };
+  }, [stopAcceleration]);
+
+  const handleBarClick = (e, id) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newValue = Math.round(percent * 100);
+
+    if (id === "bgm") setBgmVolume(newValue);
+    if (id === "sfx") setSfxVolume(newValue);
+    playSfx("select", sfxVolume / 100);
+  };
 
   const handleNext = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume);
+    playSfx("scroll", sfxVolume / 100);
     setSelectedIndex((prev) => (prev + 1) % OPTIONS.length);
   }, [OPTIONS.length, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume);
+    playSfx("scroll", sfxVolume / 100);
     setSelectedIndex((prev) => (prev - 1 + OPTIONS.length) % OPTIONS.length);
   }, [OPTIONS.length, sfxVolume]);
 
   const handleConfirm = useCallback(() => {
     const currentId = OPTIONS[selectedIndex].id;
     if (currentId === "back") {
-      playSfx("cancel", sfxVolume);
+      playSfx("cancel", sfxVolume / 100);
       onBack();
     } else {
-      playSfx("select", sfxVolume);
-      changeValue(1);
+      playSfx("select", sfxVolume / 100);
+      changeValue(1, 1);
     }
   }, [selectedIndex, OPTIONS, onBack, changeValue, sfxVolume]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.repeat) return;
+
       switch (e.key) {
-        case "ArrowDown":
-        case "s":
-        case "S":
-          handleNext();
-          break;
-        case "ArrowUp":
-        case "w":
-        case "W":
-          handlePrev();
-          break;
-        case "ArrowLeft":
-        case "a":
-        case "A":
-          changeValue(-1);
-          break;
-        case "ArrowRight":
-        case "d":
-        case "D":
-          changeValue(1);
-          break;
-        case "Enter":
-        case " ":
-          handleConfirm();
-          break;
-        case "Escape":
-        case "Backspace":
-          playSfx("cancel", sfxVolume);
+        case "ArrowDown": case "s": case "S": handleNext(); break;
+        case "ArrowUp": case "w": case "W": handlePrev(); break;
+        case "ArrowLeft": case "a": case "A": startAcceleration(-1); break;
+        case "ArrowRight": case "d": case "D": startAcceleration(1); break;
+        case "Enter": case " ": handleConfirm(); break;
+        case "Escape": case "Backspace":
+          playSfx("cancel", sfxVolume / 100);
           onBack();
           break;
-        default:
-          break;
+        default: break;
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (["ArrowLeft", "a", "A", "ArrowRight", "d", "D"].includes(e.key)) {
+        stopAcceleration();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleNext, handlePrev, changeValue, handleConfirm, onBack, sfxVolume]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [handleNext, handlePrev, handleConfirm, onBack, sfxVolume, startAcceleration, stopAcceleration]);
 
   const handleHover = (index) => {
     if (lastInputRef.current === "mouse" && selectedIndex !== index) {
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setSelectedIndex(index);
     }
   };
@@ -173,78 +192,70 @@ export default function SettingsMenu({
     if (id === "bgm") {
       return (
         <div className="option-control">
-          <button onClick={() => changeValue(-1)}>◀</button>
-          <div className="bar-container">
-            <div
-              className="bar-fill"
-              style={{ width: `${bgmVolume * 100}%` }}
-            />
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(-1, 1); }}>◀</button>
+          <div className="bar-container" onClick={(e) => handleBarClick(e, "bgm")} style={{ cursor: "pointer" }}>
+            <div className="bar-fill" style={{ width: `${bgmVolume}%` }} />
           </div>
-          <span>{Math.round(bgmVolume * 100)}%</span>
-          <button onClick={() => changeValue(1)}>▶</button>
+          <span className="value-text">{Math.round(bgmVolume)}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(1, 1); }}>▶</button>
         </div>
       );
     }
     if (id === "sfx") {
       return (
         <div className="option-control">
-          <button onClick={() => changeValue(-1)}>◀</button>
-          <div className="bar-container">
-            <div
-              className="bar-fill sfx-fill"
-              style={{ width: `${sfxVolume * 100}%` }}
-            />
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(-1, 1); }}>◀</button>
+          <div className="bar-container" onClick={(e) => handleBarClick(e, "sfx")} style={{ cursor: "pointer" }}>
+            <div className="bar-fill sfx-fill" style={{ width: `${sfxVolume}%` }} />
           </div>
-          <span>{Math.round(sfxVolume * 100)}%</span>
-          <button onClick={() => changeValue(1)}>▶</button>
+          <span className="value-text">{Math.round(sfxVolume)}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(1, 1); }}>▶</button>
         </div>
       );
     }
     if (id === "offset") {
       return (
         <div className="option-control">
-          <button onClick={() => changeValue(-1)}>◀</button>
-          <span className="offset-value">
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(-1, 1); }}>◀</button>
+          <span className="value-text">
             {audioOffset > 0 ? `+${audioOffset}` : audioOffset} ms
           </span>
-          <button onClick={() => changeValue(1)}>▶</button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(1, 1); }}>▶</button>
         </div>
       );
     }
     if (id === "controls") {
       return (
         <div className="option-control">
-          <button onClick={() => changeValue(-1)}>◀</button>
-          <span className="preset-value">{keybinds}</span>
-          <button onClick={() => changeValue(1)}>▶</button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(-1, 1); }}>◀</button>
+          <span className="value-text">{keybinds}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(1, 1); }}>▶</button>
         </div>
       );
     }
     if (id === "scroll") {
       return (
         <div className="option-control">
-          <button onClick={() => changeValue(-1)}>◀</button>
-          <span className="preset-value">
-            {isDownscroll ? "DOWNSCROLL" : "UPSCROLL"}
-          </span>
-          <button onClick={() => changeValue(1)}>▶</button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); changeValue(1, 1); }}>
+            {isDownscroll ? "DOWN ⇄" : "UP ⇄"}
+          </button>
         </div>
       );
+    }
+    if (id === "back") {
+      return <div className="option-control"><span className="value-text">▶</span></div>;
     }
     return null;
   };
 
   return (
     <div className="options-container">
-      <h1 className="options-title">SETTINGS</h1>
-
-      <div className="options-left-list">
+      <div className="options-list-wrapper">
         {OPTIONS.map((item, index) => {
           const isSelected = index === selectedIndex;
           return (
             <div
               key={item.id}
-              ref={isSelected ? selectedItemRef : null}
               className={`option-row ${isSelected ? "selected" : ""}`}
               onMouseEnter={() => handleHover(index)}
               onMouseMove={() => handleHover(index)}
@@ -254,10 +265,7 @@ export default function SettingsMenu({
                 if (item.id === "back") handleConfirm();
               }}
             >
-              <div className="option-label">
-                {isSelected && <span className="arrow">▶ </span>}
-                {item.label}
-              </div>
+              <div className="option-label">{item.label}</div>
               {renderValueControl(item.id)}
             </div>
           );

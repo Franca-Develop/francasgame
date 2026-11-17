@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./MainMenu.css";
 
-// Importa o gerenciador global de SFX via Web Audio API
-import { playSfx } from "../../utils/useAudio";
+import { playSfx } from "../../utils/audioEngine";
 
 const MENU_OPTIONS = [
   { id: "story", label: "STORY MODE", color: "#FF0055" },
@@ -27,14 +26,14 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
   const handleNext = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume * 0.8);
+    playSfx("scroll", (sfxVolume / 100) * 0.8);
     setSelectedIndex((prev) => (prev + 1) % MENU_OPTIONS.length);
   }, [isConfirming, sfxVolume]);
 
   const handlePrev = useCallback(() => {
     if (isConfirming) return;
     lastInputRef.current = "keyboard";
-    playSfx("scroll", sfxVolume * 0.8);
+    playSfx("scroll", (sfxVolume / 100) * 0.8);
     setSelectedIndex(
       (prev) => (prev - 1 + MENU_OPTIONS.length) % MENU_OPTIONS.length,
     );
@@ -44,8 +43,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    // Toca os efeitos de confirmação instantaneamente
-    playSfx("select", sfxVolume, 1.1);
+    playSfx("select", (sfxVolume / 100) * 1.1);
 
     const selectedOption = MENU_OPTIONS[selectedIndex].id;
 
@@ -56,7 +54,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
 
   const handleCancel = useCallback(() => {
     if (isConfirming) return;
-    playSfx("cancel", sfxVolume);
+    playSfx("cancel", sfxVolume / 100);
     if (onBack) onBack();
   }, [isConfirming, sfxVolume, onBack]);
 
@@ -66,7 +64,7 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
       !isConfirming &&
       selectedIndex !== index
     ) {
-      playSfx("scroll", sfxVolume * 0.8);
+      playSfx("scroll", (sfxVolume / 100) * 0.8);
       setSelectedIndex(index);
     }
   };
@@ -103,8 +101,6 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
 
   return (
     <div className="main-menu-container">
-      <div className="menu-spacer" />
-
       <nav className="menu-options-list">
         {MENU_OPTIONS.map((item, index) => {
           const isSelected = index === selectedIndex;
@@ -123,20 +119,11 @@ export default function MainMenu({ sfxVolume = 0.7, onSelectMode, onBack }) {
                 handleConfirm();
               }}
             >
-              <span className="item-arrow-left">▶</span>
               <span className="item-text">{item.label}</span>
-              <span className="item-arrow-right">◀</span>
             </button>
           );
         })}
       </nav>
-
-      <footer className="menu-footer">
-        <span>
-          [W/S] ou [SETAS] Navegar &nbsp;|&nbsp; [ENTER] Selecionar
-          &nbsp;|&nbsp; [ESC] Voltar
-        </span>
-      </footer>
     </div>
   );
 }

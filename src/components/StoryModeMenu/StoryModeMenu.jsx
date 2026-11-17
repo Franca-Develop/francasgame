@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./StoryModeMenu.css";
 
-import { playSfx } from "../../utils/useAudio";
-import { getWeekHighScore } from "../../utils/highScoreUtils";
+import { playSfx } from "../../utils/audioEngine";
+import { useProgress } from "../../contexts/ProgressContext";
 import { WEEKS } from "../../data/songsData";
 
 const DIFFICULTIES = ["EASY", "NORMAL", "HARD"];
 
 export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
+  const { getWeekHighScore } = useProgress();
+
   const [weekIndex, setWeekIndex] = useState(0);
   const [diffIndex, setDiffIndex] = useState(1);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -22,7 +24,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       setWeekIndex((prev) => {
         const next = prev + direction;
         if (next < 0 || next >= WEEKS.length) return prev;
-        playSfx("scroll", sfxVolume);
+        playSfx("scroll", sfxVolume / 100);
         return next;
       });
     },
@@ -32,7 +34,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
   const changeDifficulty = useCallback(
     (direction) => {
       if (isConfirming) return;
-      playSfx("scroll", sfxVolume);
+      playSfx("scroll", sfxVolume / 100);
       setDiffIndex(
         (prev) =>
           (prev + direction + DIFFICULTIES.length) % DIFFICULTIES.length,
@@ -45,8 +47,8 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
     if (isConfirming) return;
     setIsConfirming(true);
 
-    playSfx("select", sfxVolume, 1.1);
-    playSfx("yeah", sfxVolume * 1.1, 1.0);
+    playSfx("select", sfxVolume / 100, 1.1);
+    playSfx("yeah", (sfxVolume / 100) * 1.1, 1.0);
 
     setTimeout(() => {
       if (onSelectWeek) {
@@ -94,7 +96,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
           break;
         case "Escape":
         case "Backspace":
-          playSfx("cancel", sfxVolume);
+          playSfx("cancel", sfxVolume / 100);
           if (onBack) onBack();
           break;
         default:
@@ -111,8 +113,10 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
       <header className="story-header">
         <span className="week-score">WEEK SCORE: {weekScore}</span>
       </header>
-
-      <main className="story-banner-container">
+      <main
+        className="story-banner-container"
+        style={{ backgroundColor: currentWeek?.theme?.bg || "#af0ccf" }}
+      >
         <div className="character-canvas-placeholder" />
       </main>
 
@@ -134,7 +138,7 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
             <div
               className="weeks-carousel-track"
               style={{
-                transform: `translateY(${-weekIndex * 70 + 35}px)`,
+                transform: `translateY(${-weekIndex * 80 + 35}px)`,
               }}
             >
               {WEEKS.map((week, idx) => {
@@ -143,9 +147,10 @@ export default function StoryModeMenu({ sfxVolume = 1, onSelectWeek, onBack }) {
                   <div
                     key={week.id || idx}
                     className={`week-item ${isSelected ? "selected" : ""}`}
+                    style={{ "--accent": week.theme?.accent || "#de5ae2" }}
                     onClick={() => {
                       if (!isConfirming && idx !== weekIndex) {
-                        playSfx("scroll", sfxVolume);
+                        playSfx("scroll", sfxVolume / 100);
                         setWeekIndex(idx);
                       }
                     }}

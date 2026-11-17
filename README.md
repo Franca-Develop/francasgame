@@ -1,4 +1,4 @@
-﻿# Franca's Rhythm Trip
+# Franca's Rhythm Trip
 
 > [!WARNING]
 > Projeto em desenvolvimento. A estrutura principal do jogo já existe, mas conteúdo, apresentação visual e alguns fluxos ainda precisam de trabalho antes de uma publicação pública.
